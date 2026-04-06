@@ -15,7 +15,8 @@ nvm use 24
 
 # 3. Setup Python 3.14
 curl -LsSf https://astral.sh/uv/install.sh | sh
-source $HOME/.cargo/env
+# Ensure uv is in PATH
+export PATH="$HOME/.local/bin:$PATH"
 uv python install 3.14
 uv python pin 3.14
 
