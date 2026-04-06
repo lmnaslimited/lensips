@@ -1,0 +1,48 @@
+#!bin/bash
+
+set -e
+
+if [[ -f "/workspaces/frappe_codespace/frappe-bench/apps/frappe" ]]
+then
+    echo "Bench already exists, skipping init"
+    exit 0
+fi
+
+rm -rf /workspaces/frappe_codespace/.git
+
+source /home/frappe/.nvm/nvm.sh
+nvm alias default 20
+nvm use 20
+
+echo "nvm use 20" >> ~/.bashrc
+cd /workspace
+
+chown frappe:frappe /workspace/frappe-bench
+
+bench init \
+  --skip-redis-config-generation \
+  --frappe-branch version-16 \
+  --python python3.14 \
+  frappe-bench
+
+cd frappe-bench
+
+# Use containers instead of localhost
+bench set-mariadb-host mariadb
+bench set-redis-cache-host redis://redis-cache:6379
+bench set-redis-queue-host redis://redis-queue:6379
+bench set-redis-socketio-host redis://redis-socketio:6379
+
+# Remove redis from Procfile
+sed -i '/redis/d' ./Procfile
+
+bench new-site dev.localhost \
+--mariadb-root-password 123 \
+--admin-password admin \
+--no-mariadb-socket
+
+bench --site dev.localhost set-config developer_mode 1
+bench --site dev.localhost clear-cache
+bench use dev.localhost
+bench get-app --branch version-16 --resolve-deps erpnext
+bench --site dev.localhost install-app erpnext
