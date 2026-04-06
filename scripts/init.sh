@@ -66,3 +66,5 @@ bench get-app --branch version-3 --resolve-deps insights
 bench --site dev.localhost install-app insights
 bench get-app --branch v2.8.6 --resolve-deps https://github.com/The-Commit-Company/raven.git
 bench --site dev.localhost install-app raven
+bench get-app --branch main --resolve-deps https://github.com/lmnaslimited/lensips.git
+bench --site dev.localhost install-app lensips
