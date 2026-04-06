@@ -11,6 +11,14 @@ services:
       MYSQL_ROOT_PASSWORD: 123
     volumes:
       - mariadb-data:/var/lib/mysql
+  
+  # Enable PostgreSQL only if you use it, see development/README.md for more information.
+  # postgresql:
+  #   image: postgres:11.8
+  #   environment:
+  #     POSTGRES_PASSWORD: 123
+  #   volumes:
+  #     - postgresql-data:/var/lib/postgresql/data
 
   redis-cache:
     image: redis:7-alpine
@@ -29,8 +37,7 @@ services:
       - SHELL=/bin/bash
     volumes:
       - ..:/workspace:cached
-    # Change working_dir to /workspace so the init.sh can run 'bench init' inside it
-    working_dir: /workspace
+    working_dir: /workspace/frappe-bench
     ports:
       - "8000-8005:8000-8005"
       - "9000-9005:9000-9005"

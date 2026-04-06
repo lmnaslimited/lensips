@@ -8,10 +8,8 @@
     },
     "dockerComposeFile": "./docker-compose.yml",
     "service": "frappe",
-    // CHANGE 1: Set workspace to /workspace so bench init creates the folder correctly
-    "workspaceFolder": "/workspace",
-    // CHANGE 2: Fix the script path and ensure it's executable
-    "postCreateCommand": "chmod +x scripts/init.sh && bash scripts/init.sh",
+    "workspaceFolder": "/workspace/frappe-bench",
+    "postCreateCommand": "bash /workspace/scripts/init.sh",
     "shutdownAction": "stopCompose",
     "extensions": [
       "ms-python.python",
@@ -20,4 +18,4 @@
       "mtxr.sqltools",
       "visualstudioexptteam.vscodeintellicode"
     ]
-}
+  }
