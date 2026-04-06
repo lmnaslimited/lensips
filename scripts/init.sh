@@ -22,7 +22,7 @@ uv python pin 3.14
 
 # 4. Initialize Bench
 # We use 'uv python which' to ensure we grab the version we just installed
-PYTHON_BIN=$(uv python which 3.14)
+PYTHON_BIN=$(uv python find 3.14)
 
 cd /workspace
 chown frappe:frappe /workspace/frappe-bench
