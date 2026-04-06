@@ -30,6 +30,7 @@ cd /workspace
 chown frappe:frappe /workspace/frappe-bench
 
 bench init \
+  --ignore-exist \
   --skip-redis-config-generation \
   --frappe-branch version-16 \
   --python "$PYTHON_BIN" \

@@ -44,3 +44,4 @@ services:
 
 volumes:
   mariadb-data:
+  postgresql-data:
