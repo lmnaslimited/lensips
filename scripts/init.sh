@@ -1,9 +1,6 @@
 #!/bin/bash
 set -e
 
-# 1. Use /workspace (standard for your docker-compose)
-cd /workspace
-
 if [[ -d "/workspace/frappe-bench/apps/frappe" ]]
 then
     echo "Bench already exists, skipping init"
@@ -25,6 +22,9 @@ uv python pin 3.14
 # 4. Initialize Bench
 # We use 'uv python which' to ensure we grab the version we just installed
 PYTHON_BIN=$(uv python which 3.14)
+
+cd /workspace
+chown frappe:frappe /workspace/frappe-bench
 
 bench init \
   --skip-redis-config-generation \
