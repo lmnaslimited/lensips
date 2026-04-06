@@ -7,6 +7,8 @@ then
     exit 0
 fi
 
+rm -rf /workspaces/frappe_codespace/.git
+
 # 2. Setup Node 24
 source /home/frappe/.nvm/nvm.sh
 nvm install 24
