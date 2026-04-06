@@ -1,10 +1,11 @@
-frappe.query_reports["LENS Sales Forecast (Holt-Winters)"] = {
+frappe.query_reports["LENS Sales Forecast Holt Winters"] = {
 	filters: [
 		{
 			fieldname: "company",
 			label: __("Company"),
 			fieldtype: "Link",
 			options: "Company",
+			default: frappe.defaults.get_user_default("Company"),
 		},
 		{
 			fieldname: "from_date",
@@ -21,6 +22,32 @@ frappe.query_reports["LENS Sales Forecast (Holt-Winters)"] = {
 			default: frappe.datetime.get_today(),
 		},
 		{
+			fieldname: "based_on_document",
+			label: __("Document Type"),
+			fieldtype: "Select",
+			options: ["Sales Order", "Sales Invoice", "Delivery Note"],
+			default: "Sales Invoice",
+			reqd: 1,
+		},
+		{
+			fieldname: "warehouse",
+			label: __("Warehouse"),
+			fieldtype: "Link",
+			options: "Warehouse",
+			get_query: () => {
+				const company = frappe.query_report.get_filter_value("company");
+				if (!company) {
+					return {};
+				}
+
+				return {
+					filters: {
+						company,
+					},
+				};
+			},
+		},
+		{
 			fieldname: "group_by",
 			label: __("Group By"),
 			fieldtype: "Select",
@@ -32,7 +59,7 @@ frappe.query_reports["LENS Sales Forecast (Holt-Winters)"] = {
 			fieldname: "periodicity",
 			label: __("Periodicity"),
 			fieldtype: "Select",
-			options: ["Monthly", "Weekly"],
+			options: ["Weekly", "Monthly", "Quarterly", "Half-Yearly", "Yearly"],
 			default: "Monthly",
 			reqd: 1,
 		},
