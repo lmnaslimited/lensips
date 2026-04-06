@@ -15,6 +15,9 @@ nvm install 24
 nvm alias default 24
 nvm use 24
 
+# Node 24 → does NOT include yarn
+npm install -g yarn@1.22
+
 # 3. Setup Python 3.14
 curl -LsSf https://astral.sh/uv/install.sh | sh
 # Ensure uv is in PATH
