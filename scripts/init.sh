@@ -1,28 +1,35 @@
-#!bin/bash
-
+#!/bin/bash
 set -e
 
-if [[ -f "/workspaces/frappe_codespace/frappe-bench/apps/frappe" ]]
+# 1. Use /workspace (standard for your docker-compose)
+cd /workspace
+
+if [[ -d "/workspace/frappe-bench/apps/frappe" ]]
 then
     echo "Bench already exists, skipping init"
     exit 0
 fi
 
-rm -rf /workspaces/frappe_codespace/.git
-
+# 2. Setup Node 24
 source /home/frappe/.nvm/nvm.sh
+nvm install 24
 nvm alias default 24
 nvm use 24
 
-echo "nvm use 24" >> ~/.bashrc
-cd /workspace
+# 3. Setup Python 3.14
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.cargo/env
+uv python install 3.14
+uv python pin 3.14
 
-chown frappe:frappe /workspace/frappe-bench
+# 4. Initialize Bench
+# We use 'uv python which' to ensure we grab the version we just installed
+PYTHON_BIN=$(uv python which 3.14)
 
 bench init \
   --skip-redis-config-generation \
   --frappe-branch version-16 \
-  --python python3.14 \
+  --python "$PYTHON_BIN" \
   frappe-bench
 
 cd frappe-bench

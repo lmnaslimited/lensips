@@ -1,0 +1,39 @@
+version: "3.7"
+services:
+  mariadb:
+    # v16 requires MariaDB 11.4+ (11.8 is recommended for latest features)
+    image: mariadb:11.8
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+    environment:
+      MYSQL_ROOT_PASSWORD: 123
+    volumes:
+      - mariadb-data:/var/lib/mysql
+
+  redis-cache:
+    image: redis:7-alpine
+
+  redis-queue:
+    image: redis:7-alpine
+
+  redis-socketio:
+    image: redis:7-alpine
+
+  frappe:
+    # Use the 'latest' or 'jammy' bench image
+    image: frappe/bench:latest
+    command: sleep infinity
+    environment:
+      - SHELL=/bin/bash
+    volumes:
+      - ..:/workspace:cached
+    # Change working_dir to /workspace so the init.sh can run 'bench init' inside it
+    working_dir: /workspace
+    ports:
+      - "8000-8005:8000-8005"
+      - "9000-9005:9000-9005"
+
+volumes:
+  mariadb-data:

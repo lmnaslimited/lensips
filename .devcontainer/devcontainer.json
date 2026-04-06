@@ -1,0 +1,23 @@
+{
+    "name": "Frappe Bench v16",
+    "forwardPorts": [8000, 9000, 6787],
+    "remoteUser": "frappe",
+    "settings": {
+      "terminal.integrated.defaultProfile.linux": "bash",
+      "debug.node.autoAttach": "disabled"
+    },
+    "dockerComposeFile": "./docker-compose.yml",
+    "service": "frappe",
+    // CHANGE 1: Set workspace to /workspace so bench init creates the folder correctly
+    "workspaceFolder": "/workspace",
+    // CHANGE 2: Fix the script path and ensure it's executable
+    "postCreateCommand": "chmod +x scripts/init.sh && bash scripts/init.sh",
+    "shutdownAction": "stopCompose",
+    "extensions": [
+      "ms-python.python",
+      "ms-vscode.live-server",
+      "grapecity.gc-excelviewer",
+      "mtxr.sqltools",
+      "visualstudioexptteam.vscodeintellicode"
+    ]
+}
