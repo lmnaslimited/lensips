@@ -11,6 +11,7 @@ from erpnext.stock.doctype.warehouse.warehouse import get_child_warehouses
 
 ALLOWED_DOCUMENTS = {"Sales Order", "Sales Invoice", "Delivery Note"}
 ALLOWED_PERIODICITIES = {"Weekly", "Monthly", "Quarterly", "Half-Yearly", "Yearly"}
+ALLOWED_FORECAST_BASES = {"Order Date", "Delivery Date", "Document Date"}
 MIN_FORECAST_PERIODS = {
 	"Weekly": 52,
 	"Monthly": 12,
@@ -51,6 +52,10 @@ def normalize_filters(raw_filters):
 	if based_on_document not in ALLOWED_DOCUMENTS:
 		based_on_document = "Sales Invoice"
 
+	forecast_based_on = normalize_forecast_based_on(
+		raw_filters.get("forecast_based_on"), based_on_document
+	)
+
 	from_date = getdate(raw_filters.get("from_date"))
 	to_date = getdate(raw_filters.get("to_date"))
 	if not from_date or not to_date:
@@ -71,6 +76,7 @@ def normalize_filters(raw_filters):
 		periodicity=periodicity,
 		group_by=group_by,
 		based_on_document=based_on_document,
+		forecast_based_on=forecast_based_on,
 		warehouse=raw_filters.get("warehouse"),
 		alpha=flt(raw_filters.get("alpha") or 0.2),
 		beta=flt(raw_filters.get("beta") or 0.1),
@@ -84,17 +90,19 @@ def normalize_filters(raw_filters):
 def get_data(filters):
 	parent_table = f"`tab{filters.based_on_document}`"
 	child_table = f"`tab{filters.based_on_document} Item`"
-	date_field = get_date_field(filters.based_on_document)
+	date_expression = get_date_expression(filters)
+	data_to_date = get_actual_data_cutoff(filters)
 	has_forecast_group = frappe.db.has_column("Customer", "forecast_group")
 	forecast_group_expr = "COALESCE(cust.forecast_group, parent_doc.customer)" if has_forecast_group else "parent_doc.customer"
 
 	conditions = [
 		"parent_doc.docstatus = 1",
-		f"parent_doc.{date_field} BETWEEN %(from_date)s AND %(to_date)s",
+		"COALESCE(parent_doc.status, '') NOT IN ('Draft', 'Cancelled')",
+		f"{date_expression} BETWEEN %(from_date)s AND %(data_to_date)s",
 	]
 	query_filters = {
 		"from_date": filters.from_date,
-		"to_date": filters.to_date,
+		"data_to_date": data_to_date,
 	}
 
 	if filters.company:
@@ -114,8 +122,8 @@ def get_data(filters):
 			parent_doc.customer,
 			{forecast_group_expr} AS sales_group,
 			child_doc.warehouse,
-			parent_doc.{date_field} AS posting_date,
-			SUM(COALESCE(child_doc.stock_qty, child_doc.qty, 0)) AS actual_qty
+			{date_expression} AS posting_date,
+			SUM(COALESCE(NULLIF(child_doc.stock_qty, 0), child_doc.qty, 0)) AS actual_qty
 		FROM {child_table} child_doc
 		INNER JOIN {parent_table} parent_doc ON parent_doc.name = child_doc.parent
 		LEFT JOIN `tabItem` item ON item.item_code = child_doc.item_code
@@ -127,17 +135,42 @@ def get_data(filters):
 			parent_doc.customer,
 			sales_group,
 			child_doc.warehouse,
-			parent_doc.{date_field}
-		ORDER BY parent_doc.{date_field}
+			{date_expression}
+		ORDER BY {date_expression}
 	"""
 	return frappe.db.sql(query, query_filters, as_dict=True)
 
 
-def get_date_field(doctype):
-	if doctype in {"Sales Invoice", "Delivery Note"}:
-		return "posting_date"
+def normalize_forecast_based_on(forecast_based_on, based_on_document):
+	forecast_based_on = (forecast_based_on or "").strip()
+	if forecast_based_on not in ALLOWED_FORECAST_BASES:
+		forecast_based_on = ""
 
-	return "transaction_date"
+	if based_on_document == "Sales Order":
+		return forecast_based_on if forecast_based_on in {"Order Date", "Delivery Date"} else "Order Date"
+
+	return "Document Date"
+
+
+def get_date_expression(filters):
+	if filters.based_on_document == "Sales Order":
+		if filters.forecast_based_on == "Delivery Date":
+			return "COALESCE(child_doc.delivery_date, parent_doc.delivery_date, parent_doc.transaction_date)"
+
+		return "parent_doc.transaction_date"
+
+	if filters.based_on_document in {"Sales Invoice", "Delivery Note"}:
+		return "parent_doc.posting_date"
+
+	return "parent_doc.transaction_date"
+
+
+def get_actual_data_cutoff(filters):
+	last_period = normalize_to_period(filters.to_date, filters.periodicity)
+	for _ in range(filters.forecast_periods):
+		last_period = next_period(last_period, filters.periodicity)
+
+	return get_period_end(last_period, filters.periodicity)
 
 
 def group_data(rows, filters):
@@ -225,16 +258,20 @@ def _initial_seasonals(series, season_length):
 
 
 def build_forecast_rows(grouped_data, filters):
-	rows = []
-	consolidated_by_period = defaultdict(float)
-	history_periods = get_period_range(filters.from_date, filters.to_date, filters.periodicity)
+	rows = {}
+	variance_by_period = defaultdict(float)
+	base_history_end = normalize_to_period(filters.to_date, filters.periodicity)
 	lock_cutoff = None
 	if filters.manufacture_date:
 		lock_cutoff = normalize_to_period(add_months(filters.manufacture_date, -2), filters.periodicity)
 
 	for key, actual_by_period in grouped_data.items():
 		item_code, item_name, item_group, customer, sales_group, warehouse = key
-		series = [flt(actual_by_period.get(period, 0.0)) for period in history_periods]
+		last_actual_period = max(actual_by_period) if actual_by_period else base_history_end
+		display_history_end = max(base_history_end, last_actual_period)
+		display_history_periods = get_period_range(filters.from_date, display_history_end, filters.periodicity)
+		training_periods = get_period_range(filters.from_date, filters.to_date, filters.periodicity)
+		series = [flt(actual_by_period.get(period, 0.0)) for period in training_periods]
 
 		forecast_values = holt_winters_forecast(
 			series,
@@ -245,10 +282,11 @@ def build_forecast_rows(grouped_data, filters):
 			filters.forecast_periods,
 		)
 		last_actual = series[-1] if series else 0.0
+		group_key = resolve_group_key(filters.group_by, item_code, item_group, customer, sales_group)
 
-		for period in history_periods:
-			group_key = resolve_group_key(filters.group_by, item_code, item_group, customer, sales_group)
-			row = make_row(
+		for period in display_history_periods:
+			row_key = (group_key, item_code, customer, sales_group, warehouse, period)
+			row = rows.get(row_key) or make_row(
 				group_key=group_key,
 				item_code=item_code,
 				item_group=item_group,
@@ -261,17 +299,17 @@ def build_forecast_rows(grouped_data, filters):
 				is_locked=0,
 				periodicity=filters.periodicity,
 			)
-			rows.append(row)
-			consolidated_by_period[period] += row["actual_qty"]
+			row["actual_qty"] = flt(actual_by_period.get(period, 0.0))
+			rows[row_key] = row
 
-		future_period = history_periods[-1] if history_periods else normalize_to_period(filters.to_date, filters.periodicity)
+		future_period = base_history_end
 		for forecast_qty in forecast_values:
 			future_period = next_period(future_period, filters.periodicity)
 			is_locked = 1 if lock_cutoff and future_period <= lock_cutoff else 0
 			forecast_or_frozen = max(0.0, last_actual if is_locked else forecast_qty)
 
-			group_key = resolve_group_key(filters.group_by, item_code, item_group, customer, sales_group)
-			row = make_row(
+			row_key = (group_key, item_code, customer, sales_group, warehouse, future_period)
+			row = rows.get(row_key) or make_row(
 				group_key=group_key,
 				item_code=item_code,
 				item_group=item_group,
@@ -284,14 +322,25 @@ def build_forecast_rows(grouped_data, filters):
 				is_locked=is_locked,
 				periodicity=filters.periodicity,
 			)
-			rows.append(row)
-			consolidated_by_period[future_period] += row["forecast_qty"]
+			row["forecast_qty"] = flt(forecast_or_frozen)
+			row["is_locked"] = is_locked
+			rows[row_key] = row
 
-	for row in rows:
-		row["consolidated_forecast_qty"] = consolidated_by_period[row["period_start"]]
+	final_rows = list(rows.values())
+	for row in final_rows:
+		if row["period_start"] > base_history_end:
+			row["variance_qty"] = flt(row["forecast_qty"]) - flt(row["actual_qty"])
+			variance_by_period[row["period_start"]] += row["variance_qty"]
+		else:
+			row["variance_qty"] = None
+
+	for row in final_rows:
+		row["variance_qty_total"] = (
+			variance_by_period[row["period_start"]] if row["period_start"] > base_history_end else None
+		)
 		row["period"] = row["period_start"].isoformat()
 
-	rows.sort(
+	final_rows.sort(
 		key=lambda d: (
 			d["period"],
 			cstr_or_empty(d["group_key"]),
@@ -299,7 +348,7 @@ def build_forecast_rows(grouped_data, filters):
 			cstr_or_empty(d["item_code"]),
 		)
 	)
-	return rows
+	return final_rows
 
 
 def get_period_range(from_date, to_date, periodicity):
@@ -340,6 +389,10 @@ def next_period(period_start, periodicity):
 	return add_months(period_start, 12)
 
 
+def get_period_end(period_start, periodicity):
+	return next_period(period_start, periodicity) - timedelta(days=1)
+
+
 def resolve_group_key(group_by, item_code, item_group, customer, sales_group):
 	mapping = {
 		"Item": item_code,
@@ -375,7 +428,8 @@ def make_row(
 		"period_label": get_period_label(period, periodicity),
 		"actual_qty": flt(actual_qty),
 		"forecast_qty": flt(forecast_qty),
-		"consolidated_forecast_qty": 0,
+		"variance_qty": 0,
+		"variance_qty_total": 0,
 		"is_locked": is_locked,
 	}
 
@@ -395,13 +449,13 @@ def get_period_label(period, periodicity):
 
 
 def get_chart_data(data):
-	aggregated = defaultdict(lambda: {"label": "", "actual": 0.0, "forecast": 0.0, "consolidated": 0.0})
+	aggregated = defaultdict(lambda: {"label": "", "actual": 0.0, "forecast": 0.0, "variance": 0.0})
 	for row in data:
 		period = row.get("period")
 		aggregated[period]["label"] = row.get("period_label")
 		aggregated[period]["actual"] += flt(row.get("actual_qty"))
 		aggregated[period]["forecast"] += flt(row.get("forecast_qty"))
-		aggregated[period]["consolidated"] = flt(row.get("consolidated_forecast_qty"))
+		aggregated[period]["variance"] = flt(row.get("variance_qty_total"))
 
 	periods = sorted(aggregated)
 	return {
@@ -409,8 +463,8 @@ def get_chart_data(data):
 			"labels": [aggregated[period]["label"] for period in periods],
 			"datasets": [
 				{"name": "Actual", "values": [aggregated[period]["actual"] for period in periods]},
+				{"name": "Variance", "values": [aggregated[period]["variance"] for period in periods]},
 				{"name": "Forecast", "values": [aggregated[period]["forecast"] for period in periods]},
-				{"name": "Consolidated", "values": [aggregated[period]["consolidated"] for period in periods]},
 			],
 		},
 		"type": "line",
@@ -430,8 +484,14 @@ def get_columns():
 		{"label": "Actual Qty", "fieldname": "actual_qty", "fieldtype": "Float", "width": 120},
 		{"label": "Forecast Qty", "fieldname": "forecast_qty", "fieldtype": "Float", "width": 130},
 		{
-			"label": "Consolidated Forecast Qty",
-			"fieldname": "consolidated_forecast_qty",
+			"label": "Variance Qty",
+			"fieldname": "variance_qty",
+			"fieldtype": "Float",
+			"width": 130,
+		},
+		{
+			"label": "Total Variance Qty",
+			"fieldname": "variance_qty_total",
 			"fieldtype": "Float",
 			"width": 180,
 		},

@@ -1,4 +1,7 @@
 frappe.query_reports["LENS Sales Forecast Holt Winters"] = {
+	onload: function (report) {
+		toggle_forecast_based_on_filter(report);
+	},
 	filters: [
 		{
 			fieldname: "company",
@@ -28,6 +31,17 @@ frappe.query_reports["LENS Sales Forecast Holt Winters"] = {
 			options: ["Sales Order", "Sales Invoice", "Delivery Note"],
 			default: "Sales Invoice",
 			reqd: 1,
+			on_change: function () {
+				toggle_forecast_based_on_filter(frappe.query_report);
+			},
+		},
+		{
+			fieldname: "forecast_based_on",
+			label: __("Forecast Based On"),
+			fieldtype: "Select",
+			options: ["Order Date", "Delivery Date"],
+			default: "Order Date",
+			hidden: 1,
 		},
 		{
 			fieldname: "warehouse",
@@ -105,3 +119,11 @@ frappe.query_reports["LENS Sales Forecast Holt Winters"] = {
 		},
 	],
 };
+
+function toggle_forecast_based_on_filter(report) {
+	const document_type = report.get_filter_value("based_on_document");
+	const forecast_filter = report.get_filter("forecast_based_on");
+	const show_forecast_basis = document_type === "Sales Order";
+
+	forecast_filter.toggle(show_forecast_basis);
+}
