@@ -5,6 +5,7 @@ from collections import defaultdict
 
 import frappe
 from frappe import _
+from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.utils import add_months, cint, cstr, flt, getdate, today
 from frappe.model.rename_doc import rename_doc
 
@@ -104,11 +105,20 @@ def get_lens_sales_forecast(
 			"historical_actual_qty": forecast_report.rounded_quantity(
 				sum(flt(row.get("actual_qty")) for row in historical_rows)
 			),
+			"historical_actual_value": forecast_report.rounded_value(
+				sum(flt(row.get("actual_value")) for row in historical_rows)
+			),
 			"forecast_qty": forecast_report.rounded_quantity(
 				sum(flt(row.get("forecast_qty")) for row in forecast_rows)
 			),
+			"forecast_value": forecast_report.rounded_value(
+				sum(flt(row.get("forecast_value")) for row in forecast_rows)
+			),
 			"forecast_variance_qty": forecast_report.rounded_quantity(
 				sum(flt(row.get("variance_qty")) for row in forecast_rows)
+			),
+			"forecast_variance_value": forecast_report.rounded_value(
+				sum(flt(row.get("variance_value")) for row in forecast_rows)
 			),
 			"locked_forecast_rows": sum(cint(row.get("is_locked")) for row in forecast_rows),
 		},
@@ -128,8 +138,11 @@ def get_lens_sales_forecast(
 					requested_period, normalized_filters.periodicity
 				),
 				"actual_qty": 0,
+				"actual_value": 0,
 				"forecast_qty": 0,
+				"forecast_value": 0,
 				"variance_qty": 0,
+				"variance_value": 0,
 			}
 		)
 
@@ -205,6 +218,7 @@ def export_lens_sales_forecast_to_sales_forecast(
 
 
 def setup_raven_lens_sales_forecast_agent():
+	ensure_revenue_customizations()
 	if "raven" not in frappe.get_installed_apps():
 		return
 
@@ -212,7 +226,7 @@ def setup_raven_lens_sales_forecast_agent():
 		function_name=READ_FUNCTION_NAME,
 		description=(
 			"Analyze the LENS Sales Forecast Holt Winters report for historical sales, forecasted "
-			"quantities, variances, and period summaries."
+			"quantities and values, variances, and period summaries."
 		),
 		function_path="lensips.planning.api.lumi_forecast_agent.get_lens_sales_forecast",
 		params=_get_read_function_params(),
@@ -222,8 +236,8 @@ def setup_raven_lens_sales_forecast_agent():
 		function_name=EXPORT_FUNCTION_NAME,
 		description=(
 			"Create or update an ERPNext Sales Forecast from the filtered LENS Sales Forecast Holt "
-			"Winters report output. Use only when the user explicitly asks to create, update, or "
-			"submit a forecast."
+			"Winters report output, including the value-bearing forecast entry rows. Use only when "
+			"the user explicitly asks to create, update, or submit a forecast."
 		),
 		function_path="lensips.planning.api.lumi_forecast_agent.export_lens_sales_forecast_to_sales_forecast",
 		params=_get_export_function_params(),
@@ -272,7 +286,7 @@ def ensure_raven_bot():
 
 	bot.bot_name = BOT_NAME
 	bot.description = (
-		"Sales manager assistant for the LENS Holt-Winters sales forecast report and Sales Forecast export."
+		"Sales manager assistant for the LENS Holt-Winters sales and revenue forecast report and Sales Forecast export."
 	)
 	bot.is_ai_bot = 1
 	bot.model_provider = "OpenAI"
@@ -324,6 +338,56 @@ def repair_legacy_lens_function_paths():
 			function_doc = frappe.get_doc("Raven AI Function", function_name)
 			function_doc.function_path = new_path
 			function_doc.save(ignore_permissions=True)
+
+
+def ensure_revenue_customizations():
+	create_custom_fields(
+		{
+			"Sales Forecast Item": [
+				{
+					"fieldname": "forecast_value",
+					"label": "Forecast Value",
+					"fieldtype": "Currency",
+					"insert_after": "forecast_qty",
+					"options": "currency",
+					"read_only": 1,
+					"allow_on_submit": 1,
+					"in_list_view": 1,
+				},
+				{
+					"fieldname": "adjust_value",
+					"label": "Adjust Value",
+					"fieldtype": "Currency",
+					"insert_after": "adjust_qty",
+					"options": "currency",
+					"read_only": 1,
+					"allow_on_submit": 1,
+					"in_list_view": 1,
+				},
+				{
+					"fieldname": "demand_value",
+					"label": "Demand Value",
+					"fieldtype": "Currency",
+					"insert_after": "demand_qty",
+					"options": "currency",
+					"read_only": 1,
+					"allow_on_submit": 1,
+					"in_list_view": 1,
+				},
+			],
+			"Sales Forecast": [
+				{
+					"fieldname": "forecast_entries",
+					"label": "Forecast Entries",
+					"fieldtype": "Table",
+					"options": "Sales Forecast Entry",
+					"insert_after": "items",
+				},
+			],
+		},
+		ignore_validate=True,
+		update=True,
+	)
 
 
 def _run_report(**kwargs):
@@ -383,7 +447,16 @@ def _normalize_requested_period(period, periodicity):
 
 def _build_period_totals(rows):
 	period_totals = defaultdict(
-		lambda: {"period": None, "period_label": None, "actual_qty": 0.0, "forecast_qty": 0.0, "variance_qty": 0.0}
+		lambda: {
+			"period": None,
+			"period_label": None,
+			"actual_qty": 0.0,
+			"actual_value": 0.0,
+			"forecast_qty": 0.0,
+			"forecast_value": 0.0,
+			"variance_qty": 0.0,
+			"variance_value": 0.0,
+		}
 	)
 	for row in rows:
 		period = row.get("period")
@@ -391,8 +464,11 @@ def _build_period_totals(rows):
 		bucket["period"] = period
 		bucket["period_label"] = row.get("period_label")
 		bucket["actual_qty"] += flt(row.get("actual_qty"))
+		bucket["actual_value"] += flt(row.get("actual_value"))
 		bucket["forecast_qty"] += flt(row.get("forecast_qty"))
+		bucket["forecast_value"] += flt(row.get("forecast_value"))
 		bucket["variance_qty"] += flt(row.get("variance_qty"))
+		bucket["variance_value"] += flt(row.get("variance_value"))
 
 	results = []
 	for period in sorted(period_totals):
@@ -402,8 +478,11 @@ def _build_period_totals(rows):
 				"period": bucket["period"],
 				"period_label": bucket["period_label"],
 				"actual_qty": forecast_report.rounded_quantity(bucket["actual_qty"]),
+				"actual_value": forecast_report.rounded_value(bucket["actual_value"]),
 				"forecast_qty": forecast_report.rounded_quantity(bucket["forecast_qty"]),
+				"forecast_value": forecast_report.rounded_value(bucket["forecast_value"]),
 				"variance_qty": forecast_report.rounded_quantity(bucket["variance_qty"]),
+				"variance_value": forecast_report.rounded_value(bucket["variance_value"]),
 			}
 		)
 	return results
@@ -419,8 +498,11 @@ def _build_group_totals(rows):
 			"sales_group": None,
 			"warehouse": None,
 			"actual_qty": 0.0,
+			"actual_value": 0.0,
 			"forecast_qty": 0.0,
+			"forecast_value": 0.0,
 			"variance_qty": 0.0,
+			"variance_value": 0.0,
 		}
 	)
 
@@ -440,8 +522,11 @@ def _build_group_totals(rows):
 		bucket["sales_group"] = row.get("sales_group")
 		bucket["warehouse"] = row.get("warehouse")
 		bucket["actual_qty"] += flt(row.get("actual_qty"))
+		bucket["actual_value"] += flt(row.get("actual_value"))
 		bucket["forecast_qty"] += flt(row.get("forecast_qty"))
+		bucket["forecast_value"] += flt(row.get("forecast_value"))
 		bucket["variance_qty"] += flt(row.get("variance_qty"))
+		bucket["variance_value"] += flt(row.get("variance_value"))
 
 	results = []
 	for bucket in group_totals.values():
@@ -454,8 +539,11 @@ def _build_group_totals(rows):
 				"sales_group": bucket["sales_group"],
 				"warehouse": bucket["warehouse"],
 				"actual_qty": forecast_report.rounded_quantity(bucket["actual_qty"]),
+				"actual_value": forecast_report.rounded_value(bucket["actual_value"]),
 				"forecast_qty": forecast_report.rounded_quantity(bucket["forecast_qty"]),
+				"forecast_value": forecast_report.rounded_value(bucket["forecast_value"]),
 				"variance_qty": forecast_report.rounded_quantity(bucket["variance_qty"]),
+				"variance_value": forecast_report.rounded_value(bucket["variance_value"]),
 			}
 		)
 
@@ -602,9 +690,9 @@ Always follow these rules:
 1. For analytics, use the function `get_lens_sales_forecast`.
 2. For creating or updating ERPNext Sales Forecast documents, use `export_lens_sales_forecast_to_sales_forecast` only after the user clearly asks to create, update, export, or submit a forecast.
 3. If the user asks for a rolling 18 months, financial year, calendar year, quarter, YTD, month-by-month analysis, or a single period like Apr 2026, translate that request into concrete `from_date`, `to_date`, `periodicity`, grouping filters, and `period` when relevant before calling the function.
-4. Summarize results in business language first: historical actuals, forecast quantities, variance, major customers, major item groups, and major SKUs.
-5. When the user asks for one specific period, prefer `requested_period_summary.forecast_qty` over annual or multi-period totals.
-6. If the user asks for revenue, receipted sales value, original-versus-revised forecast variance, or spreadsheet upload behavior, explain clearly that the current backend connected to you supports quantity-based Holt-Winters analysis and Sales Forecast export, but those extra revenue and revision workflows are not yet implemented in this function set.
+4. Summarize results in business language first: historical actuals, forecast quantities and values, variance, major customers, major item groups, and major SKUs.
+5. When the user asks for one specific period, prefer `requested_period_summary.forecast_qty` and `requested_period_summary.forecast_value` over annual or multi-period totals.
+6. If the user asks for revenue, receipted sales value, or forecast export details, use the revenue fields exposed by the forecast function. If they ask for original-versus-revised forecast workflow or spreadsheet upload behavior, explain clearly that those revision workflows are not yet implemented in this function set.
 7. Ask at most one short clarification only when company or time window is truly missing and cannot be inferred.
 8. Do not claim you changed a Sales Forecast unless the export function actually returns a forecast name.
 """

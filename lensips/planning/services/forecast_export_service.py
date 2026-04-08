@@ -7,9 +7,14 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, getdate, nowdate
 
+from lensips.planning.services.forecast_pricing_service import (
+	get_customer_default_price_list,
+	get_effective_item_price,
+)
+
 
 def create_sales_forecast(data, filters):
-	parent_meta, child_meta, _child_doctype = get_forecast_meta()
+	parent_meta, child_meta, detail_meta, _child_doctype = get_forecast_meta()
 	clean_filters = normalize_filters(filters)
 	start_date = compute_forecast_start_date(clean_filters["to_date"], clean_filters["periodicity"])
 	frequency = get_frequency(clean_filters["periodicity"])
@@ -25,6 +30,7 @@ def create_sales_forecast(data, filters):
 	parent_warehouse = resolve_parent_warehouse(clean_filters, grouped_rows)
 	forecast_doc = get_existing_forecast(start_date, clean_filters["company"], parent_warehouse)
 	existing_items = get_existing_item_map(forecast_doc) if forecast_doc else {}
+	detail_rows = build_detail_rows(data, clean_filters, detail_meta)
 
 	if forecast_doc and forecast_doc.docstatus == 1:
 		frappe.throw(
@@ -48,6 +54,8 @@ def create_sales_forecast(data, filters):
 	if forecast_doc:
 		forecast_doc.set("selected_items", [])
 		forecast_doc.set("items", [])
+		if detail_meta:
+			forecast_doc.set("forecast_entries", [])
 	else:
 		forecast_doc = frappe.new_doc(parent_meta.name)
 
@@ -67,6 +75,10 @@ def create_sales_forecast(data, filters):
 	for row in child_rows:
 		forecast_doc.append("items", row)
 
+	if detail_meta:
+		for row in detail_rows:
+			forecast_doc.append("forecast_entries", row)
+
 	if forecast_doc.is_new():
 		forecast_doc.insert()
 		action = "created"
@@ -77,6 +89,7 @@ def create_sales_forecast(data, filters):
 	return {
 		"forecast_name": forecast_doc.name,
 		"total_items": len({row["item_code"] for row in child_rows}),
+		"total_entries": len(detail_rows),
 		"message": _("Sales Forecast {0} successfully {1}.").format(forecast_doc.name, action),
 	}
 
@@ -85,6 +98,7 @@ def get_forecast_meta():
 	parent_meta = frappe.get_meta("Sales Forecast")
 	items_field = parent_meta.get_field("items")
 	selected_items_field = parent_meta.get_field("selected_items")
+	detail_field = parent_meta.get_field("forecast_entries")
 
 	if not items_field or not items_field.options:
 		frappe.throw(_("Sales Forecast child table configuration is missing."))
@@ -94,7 +108,8 @@ def get_forecast_meta():
 
 	child_doctype = items_field.options
 	child_meta = frappe.get_meta(child_doctype)
-	return parent_meta, child_meta, child_doctype
+	detail_meta = frappe.get_meta(detail_field.options) if detail_field and detail_field.options else None
+	return parent_meta, child_meta, detail_meta, child_doctype
 
 
 def normalize_filters(filters):
@@ -147,8 +162,21 @@ def clean_report_rows(rows, start_date):
 				item_code=item_code,
 				period=period,
 				forecast_qty=forecast_qty,
+				forecast_value=flt(row.get("forecast_value")),
+				actual_qty=flt(row.get("actual_qty")),
+				actual_value=flt(row.get("actual_value")),
+				variance_qty=flt(row.get("variance_qty")),
+				variance_value=flt(row.get("variance_value")),
 				warehouse=(row.get("warehouse") or "").strip(),
 				is_locked=cint(row.get("is_locked")),
+				customer=(row.get("customer") or "").strip() or None,
+				item_group=(row.get("item_group") or "").strip() or None,
+				sales_group=(row.get("sales_group") or "").strip() or None,
+				group_key=(row.get("group_key") or "").strip() or None,
+				item_name=(row.get("item_name") or "").strip() or None,
+				period_label=(row.get("period_label") or "").strip() or None,
+				price_list=(row.get("price_list") or "").strip() or None,
+				price_list_rate=flt(row.get("price_list_rate")),
 			)
 		)
 
@@ -156,10 +184,11 @@ def clean_report_rows(rows, start_date):
 
 
 def group_forecast_rows(rows):
-	grouped = defaultdict(lambda: {"forecast_qty": 0.0, "is_locked": 0})
+	grouped = defaultdict(lambda: {"forecast_qty": 0.0, "forecast_value": 0.0, "is_locked": 0})
 	for row in rows:
 		key = (row.item_code, row.period, row.warehouse)
 		grouped[key]["forecast_qty"] += flt(row.forecast_qty)
+		grouped[key]["forecast_value"] += flt(row.forecast_value)
 		grouped[key]["is_locked"] = max(grouped[key]["is_locked"], cint(row.is_locked))
 
 	return grouped
@@ -247,6 +276,49 @@ def build_selected_items(item_codes, item_details, child_meta):
 	return selected_items
 
 
+def build_detail_rows(rows, filters, detail_meta):
+	if not detail_meta:
+		return []
+
+	detail_rows = []
+	for row in rows or []:
+		row = frappe._dict(row or {})
+		period = getdate(row.get("period"))
+		if not period:
+			continue
+
+		detail_rows.append(
+			sanitize_child_row(
+				{
+					"company": filters["company"],
+					"customer": row.get("customer"),
+					"sales_group": row.get("sales_group"),
+					"group_key": row.get("group_key"),
+					"item_code": row.get("item_code"),
+					"item_name": row.get("item_name"),
+					"item_group": row.get("item_group"),
+					"warehouse": row.get("warehouse"),
+					"period": period,
+					"period_label": row.get("period_label"),
+					"actual_qty": flt(row.get("actual_qty")),
+					"actual_value": flt(row.get("actual_value")),
+					"forecast_qty": flt(row.get("forecast_qty")),
+					"forecast_value": flt(row.get("forecast_value")),
+					"adjust_qty": flt(row.get("adjust_qty")),
+					"adjust_value": flt(row.get("adjust_value")),
+					"demand_qty": flt(row.get("demand_qty")),
+					"demand_value": flt(row.get("demand_value")),
+					"price_list": row.get("price_list"),
+					"price_list_rate": flt(row.get("price_list_rate")),
+					"is_locked": cint(row.get("is_locked")),
+				},
+				detail_meta,
+			)
+		)
+
+	return detail_rows
+
+
 def build_child_rows(grouped_rows, item_details, existing_items, child_meta):
 	child_rows = []
 	has_adjust_qty = bool(child_meta.get_field("adjust_qty"))
@@ -256,9 +328,33 @@ def build_child_rows(grouped_rows, item_details, existing_items, child_meta):
 		item_code, delivery_date, warehouse = key
 		row_data = grouped_rows[key]
 		existing_row = existing_items.get(key)
+		customer = row_data.get("customer")
+		item_price = get_effective_item_price(
+			item_code=item_code,
+			customer=customer,
+			price_list=get_customer_default_price_list(customer),
+			period_start=delivery_date,
+			period_end=delivery_date,
+			uom=item_details[item_code].get("uom"),
+		)
+		price_rate = flt(item_price.price_list_rate)
+		forecast_qty = rounded_quantity(row_data["forecast_qty"])
+		forecast_value = rounded_value(forecast_qty * price_rate)
+		adjust_qty = flt(getattr(existing_row, "adjust_qty", 0)) if existing_row else 0
+		adjust_value = rounded_value(adjust_qty * price_rate)
+		demand_qty = rounded_quantity(forecast_qty + adjust_qty)
+		demand_value = rounded_value(demand_qty * price_rate)
 
 		if row_data["is_locked"] and existing_row:
-			child_rows.append(sanitize_child_row(existing_row, child_meta))
+			saved_row = sanitize_child_row(existing_row, child_meta)
+			saved_row.update(
+				{
+					"forecast_value": forecast_value,
+					"adjust_value": adjust_value,
+					"demand_value": demand_value,
+				}
+			)
+			child_rows.append(saved_row)
 			continue
 
 		if row_data["is_locked"] and not existing_row:
@@ -270,16 +366,18 @@ def build_child_rows(grouped_rows, item_details, existing_items, child_meta):
 			"item_name": item.get("item_name"),
 			"uom": item.get("uom"),
 			"delivery_date": delivery_date,
-			"forecast_qty": rounded_quantity(row_data["forecast_qty"]),
+			"forecast_qty": forecast_qty,
+			"forecast_value": forecast_value,
 			"warehouse": warehouse or None,
 		}
 
 		if has_adjust_qty:
-			child_row["adjust_qty"] = flt(existing_row.adjust_qty) if existing_row else 0
+			child_row["adjust_qty"] = adjust_qty
+			child_row["adjust_value"] = adjust_value
 
 		if has_demand_qty:
-			adjust_qty = flt(child_row.get("adjust_qty"))
-			child_row["demand_qty"] = rounded_quantity(child_row["forecast_qty"] + adjust_qty)
+			child_row["demand_qty"] = demand_qty
+			child_row["demand_value"] = demand_value
 
 		child_rows.append(child_row)
 
@@ -351,3 +449,7 @@ def next_period(period_start, periodicity):
 
 def rounded_quantity(value):
 	return int(round(flt(value)))
+
+
+def rounded_value(value):
+	return round(flt(value), 2)
