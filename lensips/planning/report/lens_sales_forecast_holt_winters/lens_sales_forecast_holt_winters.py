@@ -48,9 +48,9 @@ def normalize_filters(raw_filters):
 	if group_by not in {"Item", "Item Group", "Customer", "Sales Group"}:
 		group_by = "Item"
 
-	based_on_document = (raw_filters.get("based_on_document") or "Sales Invoice").strip()
+	based_on_document = (raw_filters.get("based_on_document") or "Sales Order").strip()
 	if based_on_document not in ALLOWED_DOCUMENTS:
-		based_on_document = "Sales Invoice"
+		based_on_document = "Sales Order"
 
 	forecast_based_on = normalize_forecast_based_on(
 		raw_filters.get("forecast_based_on"), based_on_document
@@ -78,12 +78,16 @@ def normalize_filters(raw_filters):
 		based_on_document=based_on_document,
 		forecast_based_on=forecast_based_on,
 		warehouse=raw_filters.get("warehouse"),
-		alpha=flt(raw_filters.get("alpha") or 0.2),
+		alpha=flt(raw_filters.get("alpha") or 0.3),
 		beta=flt(raw_filters.get("beta") or 0.1),
 		gamma=flt(raw_filters.get("gamma") or 0.1),
 		season_length=season_length,
 		forecast_periods=forecast_periods,
 		manufacture_date=getdate(raw_filters.get("manufacture_date")) if raw_filters.get("manufacture_date") else None,
+		item_code=(raw_filters.get("item_code") or "").strip() or None,
+		item_group=(raw_filters.get("item_group") or "").strip() or None,
+		customer=(raw_filters.get("customer") or "").strip() or None,
+		sales_group=(raw_filters.get("sales_group") or "").strip() or None,
 	)
 
 
@@ -108,6 +112,22 @@ def get_data(filters):
 	if filters.company:
 		conditions.append("parent_doc.company = %(company)s")
 		query_filters["company"] = filters.company
+
+	if filters.item_code:
+		conditions.append("child_doc.item_code = %(item_code)s")
+		query_filters["item_code"] = filters.item_code
+
+	if filters.item_group:
+		conditions.append("item.item_group = %(item_group)s")
+		query_filters["item_group"] = filters.item_group
+
+	if filters.customer:
+		conditions.append("parent_doc.customer = %(customer)s")
+		query_filters["customer"] = filters.customer
+
+	if filters.sales_group:
+		conditions.append(f"{forecast_group_expr} = %(sales_group)s")
+		query_filters["sales_group"] = filters.sales_group
 
 	if filters.warehouse:
 		warehouses = tuple(get_child_warehouses(filters.warehouse) or [filters.warehouse])
@@ -147,7 +167,7 @@ def normalize_forecast_based_on(forecast_based_on, based_on_document):
 		forecast_based_on = ""
 
 	if based_on_document == "Sales Order":
-		return forecast_based_on if forecast_based_on in {"Order Date", "Delivery Date"} else "Order Date"
+		return forecast_based_on if forecast_based_on in {"Order Date", "Delivery Date"} else "Delivery Date"
 
 	return "Document Date"
 
@@ -192,11 +212,11 @@ def group_data(rows, filters):
 
 def holt_winters_forecast(data, alpha, beta, gamma, season_length, periods):
 	if not data:
-		return [0.0] * periods
+		return [0] * periods
 
 	if len(data) < max(2, season_length):
 		average = max(0.0, sum(data) / len(data))
-		return [average] * periods
+		return [rounded_quantity(average)] * periods
 
 	series = [max(0.0, flt(value)) for value in data]
 	season_length = min(season_length, len(series))
@@ -216,7 +236,7 @@ def holt_winters_forecast(data, alpha, beta, gamma, season_length, periods):
 	for horizon in range(1, periods + 1):
 		seasonal = seasonals[(len(series) + horizon - 1) % season_length]
 		value = level + horizon * trend + seasonal
-		forecast.append(max(0.0, value))
+		forecast.append(rounded_quantity(max(0.0, value)))
 
 	return forecast
 
@@ -281,7 +301,7 @@ def build_forecast_rows(grouped_data, filters):
 			filters.season_length,
 			filters.forecast_periods,
 		)
-		last_actual = series[-1] if series else 0.0
+		last_actual = rounded_quantity(series[-1]) if series else 0
 		group_key = resolve_group_key(filters.group_by, item_code, item_group, customer, sales_group)
 
 		for period in display_history_periods:
@@ -306,7 +326,7 @@ def build_forecast_rows(grouped_data, filters):
 		for forecast_qty in forecast_values:
 			future_period = next_period(future_period, filters.periodicity)
 			is_locked = 1 if lock_cutoff and future_period <= lock_cutoff else 0
-			forecast_or_frozen = max(0.0, last_actual if is_locked else forecast_qty)
+			forecast_or_frozen = last_actual if is_locked else forecast_qty
 
 			row_key = (group_key, item_code, customer, sales_group, warehouse, future_period)
 			row = rows.get(row_key) or make_row(
@@ -427,7 +447,7 @@ def make_row(
 		"period": period,
 		"period_label": get_period_label(period, periodicity),
 		"actual_qty": flt(actual_qty),
-		"forecast_qty": flt(forecast_qty),
+		"forecast_qty": rounded_quantity(forecast_qty),
 		"variance_qty": 0,
 		"variance_qty_total": 0,
 		"is_locked": is_locked,
@@ -482,7 +502,12 @@ def get_columns():
 		{"label": "Period Start", "fieldname": "period", "fieldtype": "Date", "width": 110},
 		{"label": "Period Label", "fieldname": "period_label", "fieldtype": "Data", "width": 110},
 		{"label": "Actual Qty", "fieldname": "actual_qty", "fieldtype": "Float", "width": 120},
-		{"label": "Forecast Qty", "fieldname": "forecast_qty", "fieldtype": "Float", "width": 130},
+		{
+			"label": "Forecast Qty",
+			"fieldname": "forecast_qty",
+			"fieldtype": "Int",
+			"width": 130,
+		},
 		{
 			"label": "Variance Qty",
 			"fieldname": "variance_qty",
@@ -501,3 +526,7 @@ def get_columns():
 
 def cstr_or_empty(value):
 	return str(value) if value is not None else ""
+
+
+def rounded_quantity(value):
+	return int(round(flt(value)))

@@ -83,7 +83,7 @@ app_license = "mit"
 # ------------
 
 # before_install = "lensips.install.before_install"
-# after_install = "lensips.install.after_install"
+after_install = "lensips.planning.api.lumi_forecast_agent.setup_raven_lens_sales_forecast_agent"
 
 # Uninstallation
 # ------------
@@ -241,4 +241,3 @@ app_license = "mit"
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
-
