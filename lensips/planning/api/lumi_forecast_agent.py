@@ -343,6 +343,14 @@ def repair_legacy_lens_function_paths():
 def ensure_revenue_customizations():
 	create_custom_fields(
 		{
+			"Sales Order": [
+				{
+					"fieldname": "external_order_no",
+					"label": "External Order No",
+					"fieldtype": "Data",
+					"insert_after": "delivery_date",
+				},
+			],
 			"Sales Forecast Item": [
 				{
 					"fieldname": "forecast_value",
