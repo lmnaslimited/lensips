@@ -103,6 +103,12 @@ def get_data(filters):
 	has_forecast_group = frappe.db.has_column("Customer", "forecast_group")
 	forecast_group_expr = "COALESCE(cust.forecast_group, parent_doc.customer)" if has_forecast_group else "parent_doc.customer"
 	uom_expression = "COALESCE(child_doc.stock_uom, child_doc.uom, item.sales_uom)"
+	has_payment_fields = (
+		filters.based_on_document == "Sales Order"
+		and frappe.db.has_column("Sales Order Item", "paid_amount")
+		and frappe.db.has_column("Sales Order Item", "payment_date")
+	)
+	actual_value_expression = get_actual_value_expression(filters, has_payment_fields)
 
 	conditions = [
 		"parent_doc.docstatus = 1",
@@ -150,15 +156,7 @@ def get_data(filters):
 			child_doc.warehouse,
 			{date_expression} AS posting_date,
 			SUM(COALESCE(NULLIF(child_doc.stock_qty, 0), child_doc.qty, 0)) AS actual_qty,
-			SUM(
-				COALESCE(
-					NULLIF(child_doc.base_net_amount, 0),
-					NULLIF(child_doc.net_amount, 0),
-					NULLIF(child_doc.base_amount, 0),
-					NULLIF(child_doc.amount, 0),
-					COALESCE(child_doc.rate, 0) * COALESCE(NULLIF(child_doc.stock_qty, 0), child_doc.qty, 0)
-				)
-			) AS actual_value
+			SUM({actual_value_expression}) AS actual_value
 		FROM {child_table} child_doc
 		INNER JOIN {parent_table} parent_doc ON parent_doc.name = child_doc.parent
 		LEFT JOIN `tabItem` item ON item.item_code = child_doc.item_code
@@ -177,6 +175,30 @@ def get_data(filters):
 	return frappe.db.sql(query, query_filters, as_dict=True)
 
 
+def get_actual_value_expression(filters, has_payment_fields):
+	if filters.based_on_document == "Sales Order" and has_payment_fields:
+		return (
+			"COALESCE("
+			"NULLIF(child_doc.paid_amount, 0), "
+			"NULLIF(child_doc.base_net_amount, 0), "
+			"NULLIF(child_doc.net_amount, 0), "
+			"NULLIF(child_doc.base_amount, 0), "
+			"NULLIF(child_doc.amount, 0), "
+			"COALESCE(child_doc.rate, 0) * COALESCE(NULLIF(child_doc.stock_qty, 0), child_doc.qty, 0)"
+			")"
+		)
+
+	return (
+		"COALESCE("
+		"NULLIF(child_doc.base_net_amount, 0), "
+		"NULLIF(child_doc.net_amount, 0), "
+		"NULLIF(child_doc.base_amount, 0), "
+		"NULLIF(child_doc.amount, 0), "
+		"COALESCE(child_doc.rate, 0) * COALESCE(NULLIF(child_doc.stock_qty, 0), child_doc.qty, 0)"
+		")"
+	)
+
+
 def normalize_forecast_based_on(forecast_based_on, based_on_document):
 	forecast_based_on = (forecast_based_on or "").strip()
 	if forecast_based_on not in ALLOWED_FORECAST_BASES:
@@ -190,6 +212,8 @@ def normalize_forecast_based_on(forecast_based_on, based_on_document):
 
 def get_date_expression(filters):
 	if filters.based_on_document == "Sales Order":
+		if frappe.db.has_column("Sales Order Item", "payment_date"):
+			return "COALESCE(child_doc.payment_date, parent_doc.transaction_date)"
 		if filters.forecast_based_on == "Delivery Date":
 			return "COALESCE(child_doc.delivery_date, parent_doc.delivery_date, parent_doc.transaction_date)"
 

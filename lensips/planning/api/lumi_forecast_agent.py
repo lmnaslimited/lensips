@@ -375,6 +375,39 @@ def ensure_revenue_customizations():
 					"in_list_view": 1,
 				},
 			],
+			"Sales Order Item": [
+				{
+					"fieldname": "invoicing_section",
+					"label": "Invoicing",
+					"fieldtype": "Section Break",
+					"insert_after": "billed_amt",
+				},
+				{
+					"fieldname": "invoice_number",
+					"label": "Invoice Number",
+					"fieldtype": "Data",
+					"insert_after": "invoicing_section",
+					"allow_on_submit": 1,
+					"in_list_view": 1,
+				},
+				{
+					"fieldname": "paid_amount",
+					"label": "Paid Amount",
+					"fieldtype": "Currency",
+					"insert_after": "invoice_number",
+					"options": "currency",
+					"allow_on_submit": 1,
+					"in_list_view": 1,
+				},
+				{
+					"fieldname": "payment_date",
+					"label": "Payment Date",
+					"fieldtype": "Date",
+					"insert_after": "paid_amount",
+					"allow_on_submit": 1,
+					"in_list_view": 1,
+				},
+			],
 			"Sales Forecast": [
 				{
 					"fieldname": "forecast_entries",
