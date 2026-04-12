@@ -12,6 +12,7 @@ from frappe.model.rename_doc import rename_doc
 from lensips.planning.report.lens_sales_forecast_holt_winters import (
 	lens_sales_forecast_holt_winters as forecast_report,
 )
+from lensips.planning.setup import ensure_hakka_reference_setup
 from lensips.planning.services.forecast_export_service import create_sales_forecast
 
 
@@ -218,6 +219,7 @@ def export_lens_sales_forecast_to_sales_forecast(
 
 
 def setup_raven_lens_sales_forecast_agent():
+	ensure_hakka_reference_setup()
 	ensure_revenue_customizations()
 	if "raven" not in frappe.get_installed_apps():
 		return
@@ -243,8 +245,14 @@ def setup_raven_lens_sales_forecast_agent():
 		params=_get_export_function_params(),
 		requires_write_permissions=1,
 	)
-	ensure_raven_bot()
 	repair_legacy_lens_function_paths()
+	if not is_raven_ai_enabled():
+		frappe.logger().info(
+			"Skipping LUMI Raven bot setup for lensips because Raven AI Integration is disabled."
+		)
+		return
+
+	ensure_raven_bot()
 
 
 def ensure_raven_ai_function(
@@ -313,6 +321,18 @@ def ensure_raven_bot():
 
 	if bot.name != BOT_NAME:
 		rename_doc("Raven Bot", bot.name, BOT_NAME, force=True, ignore_permissions=True)
+
+
+def is_raven_ai_enabled() -> bool:
+	if not frappe.db.exists("DocType", "Raven Settings"):
+		return False
+
+	try:
+		raven_settings = frappe.get_cached_doc("Raven Settings")
+	except Exception:
+		return False
+
+	return bool(cint(getattr(raven_settings, "enable_ai_integration", 0)))
 
 
 def repair_legacy_lens_function_paths():

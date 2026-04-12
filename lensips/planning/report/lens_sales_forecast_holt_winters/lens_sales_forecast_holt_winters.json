@@ -26,6 +26,12 @@
    "role": "Manufacturing Manager"
   },
   {
+   "role": "Planning User"
+  },
+  {
+   "role": "Planning Manager"
+  },
+  {
    "role": "System Manager"
   }
  ]

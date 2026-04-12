@@ -1,0 +1,151 @@
+{
+ "app": "lensips",
+ "charts": [],
+ "content": "[{\"id\":\"5Q6b5-_uyr\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Planning Masters</b></span>\",\"col\":12}},{\"id\":\"nBTlwFvX3a\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning Masters\",\"col\":4}},{\"id\":\"hKjThB0T9j\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning Reports\",\"col\":4}},{\"id\":\"N0fU4xVdY4\",\"type\":\"card\",\"data\":{\"card_name\":\"Core Masters\",\"col\":4}},{\"id\":\"d4Qv2f5P7m\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}}]",
+ "creation": "2026-04-10 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "organization",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Planning",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Planning Masters",
+   "link_count": 3,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Lens Pallet Profile",
+   "link_count": 0,
+   "link_to": "Lens Pallet Profile",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Lens Container Profile",
+   "link_count": 0,
+   "link_to": "Lens Container Profile",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Planning Settings",
+   "link_count": 0,
+   "link_to": "Planning Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Warehouse",
+   "link_count": 0,
+   "link_to": "Warehouse",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Planning Reports",
+   "link_count": 1,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "LENS Sales Forecast Holt Winters",
+   "link_count": 0,
+   "link_to": "LENS Sales Forecast Holt Winters",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Core Masters",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Settings",
+   "link_count": 1,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Item",
+   "link_count": 0,
+   "link_to": "Item",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Forecast",
+   "link_count": 0,
+   "link_to": "Sales Forecast",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-04-10 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Planning",
+ "name": "Planning",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "restrict_to_domain": "",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Planning Manager"
+  },
+  {
+   "role": "Planning User"
+  }
+ ],
+ "sequence_id": 18.0,
+ "shortcuts": [],
+ "title": "Planning",
+ "type": "Workspace"
+}

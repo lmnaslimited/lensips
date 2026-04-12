@@ -1,0 +1,120 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:profile_name",
+ "creation": "2026-04-10 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "profile_name",
+  "container_size",
+  "max_weight_tonnes",
+  "usable_volume_pct",
+  "column_break_ukrd",
+  "max_volume_cbm",
+  "buffer_pct",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "profile_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Profile Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "container_size",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Container Size"
+  },
+  {
+   "fieldname": "max_weight_tonnes",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Max Weight (Tonnes)",
+   "non_negative": 1
+  },
+  {
+   "default": "95",
+   "fieldname": "usable_volume_pct",
+   "fieldtype": "Percent",
+   "label": "Usable Volume (%)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_ukrd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "max_volume_cbm",
+   "fieldtype": "Float",
+   "label": "Max Volume (CBM)",
+   "non_negative": 1,
+   "precision": "6"
+  },
+  {
+   "default": "5",
+   "fieldname": "buffer_pct",
+   "fieldtype": "Percent",
+   "label": "Buffer (%)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-10 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Planning",
+ "name": "Lens Container Profile",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Planning Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Planning User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "profile_name"
+}

@@ -137,13 +137,11 @@ after_install = "lensips.planning.api.lumi_forecast_agent.setup_raven_lens_sales
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Item": {
+		"validate": "lensips.planning.setup.sync_item_planning_data",
+	}
+}
 
 # Scheduled Tasks
 # ---------------
