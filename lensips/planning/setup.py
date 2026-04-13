@@ -153,9 +153,16 @@ def ensure_planning_customizations():
 					"insert_after": "dry_capacity_plt",
 				},
 				{
+					"fieldname": "shipment_profile",
+					"fieldtype": "Link",
+					"label": "Shipment Profile",
+					"options": "Shipment Profile"
+				},
+				{
 					"fieldname": "column_break_lensips_warehouse_planning",
 					"fieldtype": "Column Break",
-					"insert_after": "pallet_uom",
+					"insert_after": "shipment_profile",
+					"insert_after": "shipment_profile",
 				},
 				{
 					"fieldname": "warehouse_planning_role",

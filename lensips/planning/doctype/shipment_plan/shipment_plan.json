@@ -1,0 +1,72 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "SHIPPLAN-.{warehouse}.-.#####",
+ "creation": "2026-04-12 23:02:48.129830",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "warehouse",
+  "shipment_parcel_template",
+  "column_break_kkbg",
+  "shipment_profile"
+ ],
+ "fields": [
+  {
+   "fieldname": "shipment_parcel_template",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Shipment Parcel Template",
+   "options": "Shipment Parcel Template",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_kkbg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "shipment_profile",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Shipment Profile",
+   "options": "Shipment Profile",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-13 03:03:22.244779",
+ "modified_by": "Administrator",
+ "module": "Planning",
+ "name": "Shipment Plan",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
