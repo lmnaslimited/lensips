@@ -5,6 +5,10 @@
  "document_type": "Setup",
  "engine": "InnoDB",
  "field_order": [
+  "stock_defaults_section",
+  "source_warehouse",
+  "column_break_hdsd",
+  "default_transfer_uom",
   "uom_settings_section",
   "carton_uom",
   "carton_per_layer_uom",
@@ -81,12 +85,35 @@
    "fieldtype": "Link",
    "label": "Pallet 2 UOM",
    "options": "UOM"
+  },
+  {
+   "fieldname": "stock_defaults_section",
+   "fieldtype": "Section Break",
+   "label": "Stock Defaults"
+  },
+  {
+   "description": "The source warehouse to be used for all material transfers. Eg the manufacturing warehouse",
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "label": "Source Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "column_break_hdsd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Default UOM used for auto Reorder Material Requests",
+   "fieldname": "default_transfer_uom",
+   "fieldtype": "Link",
+   "label": "Default Transfer UOM",
+   "options": "UOM"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-04-11 01:56:23.540876",
+ "modified": "2026-04-14 23:16:17.551534",
  "modified_by": "Administrator",
  "module": "Planning",
  "name": "Planning Settings",
