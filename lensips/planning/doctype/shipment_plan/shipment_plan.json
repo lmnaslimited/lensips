@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "SHIPPLAN-.{warehouse}.-.#####",
+ "autoname": "SHIPPLAN-.{target_warehouse}.-.#####",
  "creation": "2026-04-12 23:02:48.129830",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -9,6 +9,7 @@
   "company",
   "source_warehouse",
   "target_warehouse",
+  "select_pxjc",
   "column_break_kkbg",
   "shipment_profile",
   "shipment_parcel_template",
@@ -23,7 +24,6 @@
   "planned_items_section",
   "get_planned_items",
   "planned_items",
-  "amended_from",
   "totals_section",
   "total_open_qty",
   "total_stock_qty",
@@ -35,7 +35,11 @@
   "total_shipment_stock_qty",
   "total_shipment_qty",
   "total_pallets",
-  "total_shipment_weight"
+  "total_shipment_weight",
+  "shipment",
+  "more_info_tab",
+  "amended_from",
+  "connections_tab"
  ],
  "fields": [
   {
@@ -106,12 +110,13 @@
    "label": "Create Pick List per Pallet"
   },
   {
+   "allow_on_submit": 1,
    "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "\nDraft\nSubmitted\nTo be Picked\nPicked\nIn Transit\nShipment Created\nComplete\nCancelled",
+   "options": "\nDraft\nSubmitted\nTo be Picked\nPartly Picked\nPicked\nIn Transit\nShipment Created\nComplete\nCancelled",
    "read_only": 1
   },
   {
@@ -222,19 +227,48 @@
   {
    "fieldname": "column_break_ttop",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "shipment",
+   "fieldtype": "Link",
+   "label": "Shipment",
+   "options": "Shipment",
+   "read_only": 1
+  },
+  {
+   "fieldname": "more_info_tab",
+   "fieldtype": "Tab Break",
+   "label": "More Info"
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections"
+  },
+  {
+   "fieldname": "select_pxjc",
+   "fieldtype": "Select",
+   "label": "Get Items From",
+   "options": "Material Request\nSales Order"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [
   {
-   "group": "Stock",
+   "group": "Fulfilment",
    "link_doctype": "Pick List",
+   "link_fieldname": "shipment_plan"
+  },
+  {
+   "group": "Transport",
+   "link_doctype": "Shipment",
    "link_fieldname": "shipment_plan"
   }
  ],
- "modified": "2026-04-16 16:12:00.429943",
+ "modified": "2026-04-17 00:57:00.017280",
  "modified_by": "Administrator",
  "module": "Planning",
  "name": "Shipment Plan",

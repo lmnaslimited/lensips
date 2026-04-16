@@ -10,10 +10,10 @@ def get_data(data=None):
                 'label': _('Fulfillment'),
                 'items': ['Pick List']
                 # 'items': ['Pick List', 'Stock Entry', 'Delivery Note']
+            },
+            {
+                'label': _('Transportation'),
+                'items': ['Shipment']
             }
-            # {
-            #     'label': _('Reference'),
-            #     'items': ['Material Request']
-            # }
         ]
     }

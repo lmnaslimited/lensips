@@ -16,19 +16,23 @@
   "target_warehouse",
   "section_break_dset",
   "open_qty",
+  "forecast_qty",
   "planned_qty",
   "shipment_qty",
   "column_break_ndek",
   "open_uom",
+  "forecast_uom",
   "transfer_uom",
   "shipment_uom",
   "stock_uom",
   "column_break_bfxk",
   "open_uom_conversion",
+  "forecast_uom_conversion",
   "planned_uom_conversion",
   "shipment_uom_conversion",
   "column_break_rpbk",
   "stock_qty",
+  "forecast_stock_qty",
   "planned_stock_qty",
   "shipment_stock_qty",
   "actual_qty",
@@ -253,16 +257,44 @@
   {
    "fieldname": "stock_status",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Stock Status",
    "options": "\nGood\nLow\nShort",
-   "read_only": 1,
-   "in_list_view": 1
+   "read_only": 1
+  },
+  {
+   "fieldname": "forecast_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Forecast Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "forecast_uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Forecast UOM",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "forecast_stock_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Forecast Stock Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "forecast_uom_conversion",
+   "fieldtype": "Float",
+   "label": "Forecast UOM Conversion",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-04-16 04:27:04.614264",
+ "modified": "2026-04-17 02:33:10.916587",
  "modified_by": "Administrator",
  "module": "Planning",
  "name": "Shipment Plan Item",

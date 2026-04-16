@@ -203,6 +203,15 @@ def ensure_planning_customizations():
 					"insert_after": "material_request",
 				},
 			],
+			"Shipment": [
+				{
+					"fieldname": "shipment_plan",
+					"label": "Shipment Plan",
+					"fieldtype": "Link",
+					"options": "Shipment Plan",
+					"insert_after": "shipment_delivery_note",
+				},
+			],
 			"Pick List Item": [
 				{
 					"fieldname": "shipment_qty",

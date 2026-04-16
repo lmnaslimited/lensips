@@ -82,7 +82,7 @@ frappe.ui.form.on("Shipment Plan", {
 		return frm.call("set_open_material_requests").then(() => {
 			frm.refresh_field("material_requests");
 			frm.dirty();
-			return frm.save();
+			return frm.save().then(() => update_capacity_banner(frm));
 		});
 	},
 
@@ -100,18 +100,38 @@ frappe.ui.form.on("Shipment Plan", {
 
 	refresh(frm) {
 		update_capacity_banner(frm);
-		if (frm.doc.docstatus === 1 && frm.doc.status === "Submitted") {
+		if (frm.doc.docstatus === 1) {
+			frm.call("refresh_execution_status").then((r) => {
+				const msg = r.message || {};
+				if (msg.status) {
+					frm.set_value("status", msg.status);
+				}
+			});
+		}
+		if (frm.doc.docstatus === 1 && ["Submitted", "To be Picked", "Partly Picked"].includes(frm.doc.status)) {
 			frm.add_custom_button(__("Start Plan"), () => {
-				frappe.confirm(__("Create a Pick List and start this Shipment Plan?"), () => {
+				frappe.confirm(__("Create Pick List(s) for this Shipment Plan?"), () => {
 					frm.call("start_plan").then((r) => {
 						const msg = r.message || {};
 						if (msg.pick_lists && msg.pick_lists.length) {
-							frappe.show_alert({
-								message: __("Created {0} Pick List(s): {1}", [msg.pick_lists.length, msg.pick_lists.join(", ")]),
-								indicator: "green",
-							});
+							frappe.show_alert({ message: __("Created {0} Pick List(s): {1}", [msg.pick_lists.length, msg.pick_lists.join(", ")]), indicator: "green" });
 						}
 						frm.reload_doc();
+					});
+				});
+			}, __("Actions"));
+		}
+		if (frm.doc.docstatus === 1 && frm.doc.status === "Picked") {
+			frm.add_custom_button(__("Create Shipment"), () => {
+				frappe.confirm(__("Create Shipment for this Shipment Plan?"), () => {
+					frm.call("create_shipment").then((r) => {
+						const msg = r.message || {};
+						frappe.new_doc("Shipment", msg, (doc) => {
+							doc.shipment_plan = frm.doc.name;
+							if (frm.doc.shipment_parcel_template) {
+								doc.parcel_template = frm.doc.shipment_parcel_template;
+							}
+						});
 					});
 				});
 			}, __("Actions"));

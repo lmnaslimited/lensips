@@ -20,9 +20,15 @@ WEEKDAY_TO_INDEX = {
 
 
 class ShipmentPlan(Document):
+	def onload(self):
+		_sync_material_request_statuses(self)
+		_refresh_execution_status(self, persist=False)
+
 	def validate(self):
 		self.set_shipment_dates()
+		_sync_material_request_statuses(self)
 		_update_totals(self)
+		_refresh_execution_status(self, persist=False)
 		self.set_capacity_flags()
 
 	def before_submit(self):
@@ -57,10 +63,10 @@ class ShipmentPlan(Document):
 			frappe.throw(_("Please add planned items before starting the plan"))
 
 		pick_lists = _create_pick_lists_from_plan(self)
-		self.db_set("status", "To be Picked")
+		_refresh_execution_status(self, persist=True)
 		return {
 			"pick_lists": [pick_list.name for pick_list in pick_lists],
-			"status": "To be Picked",
+			"status": self.status,
 		}
 
 	def set_capacity_flags(self):
@@ -73,6 +79,16 @@ class ShipmentPlan(Document):
 	@frappe.whitelist()
 	def get_truck_prerequisites(self):
 		return _get_truck_prerequisites_data(self)
+
+	@frappe.whitelist()
+	def refresh_execution_status(self):
+		_refresh_execution_status(self)
+		self.save(ignore_permissions=True)
+		return {"status": self.status, "pick_list_count": getattr(self, "pick_list_count", 0), "submitted_pick_list_count": getattr(self, "submitted_pick_list_count", 0)}
+
+	@frappe.whitelist()
+	def create_shipment(self):
+		return _get_shipment_defaults_from_plan(self)
 
 	def set_shipment_dates(self):
 		if not (self.source_warehouse and self.shipment_profile):
@@ -112,6 +128,7 @@ class ShipmentPlan(Document):
 					"status": mr.status,
 				},
 			)
+		_sync_material_request_statuses(self)
 		_update_totals(self)
 
 	@frappe.whitelist()
@@ -138,6 +155,18 @@ class ShipmentPlan(Document):
 				shipment_qty = _convert_item_qty(item.item_code, planned_qty, transfer_uom, shipment_uom)
 				if shipment_qty <= 0:
 					continue
+				forecast_data = _get_forecast_qty_for_planned_item(
+					self.company,
+					item.item_code,
+					self.shipment_date,
+					self.shipment_profile,
+					self.source_warehouse,
+					item.uom,
+					item_stock_uom,
+				)
+				forecast_qty = flt(forecast_data.get("forecast_qty") or 0)
+				forecast_stock_qty = flt(forecast_data.get("forecast_stock_qty") or 0)
+				forecast_uom = forecast_data.get("forecast_uom")
 
 				if capacity and used_capacity + shipment_qty > capacity:
 					remaining = capacity - used_capacity
@@ -165,14 +194,17 @@ class ShipmentPlan(Document):
 						"item_name": item.item_name,
 						"stock_uom": item_stock_uom,
 						"open_uom": item.uom,
+						"forecast_uom": forecast_uom,
 						"transfer_uom": transfer_uom,
 						"shipment_uom": shipment_uom,
 						"open_qty": open_qty,
+						"forecast_qty": forecast_qty,
 						"planned_qty": planned_qty,
 						"shipment_qty": shipment_qty,
 						"open_uom_conversion": _get_item_uom_factor(item_doc, item.uom),
 						"planned_uom_conversion": _get_item_uom_factor(item_doc, transfer_uom),
 						"shipment_uom_conversion": _get_item_uom_factor(item_doc, shipment_uom),
+						"forecast_uom_conversion": _get_item_uom_factor(item_doc, forecast_uom),
 						"stock_qty": stock_qty,
 						"planned_stock_qty": planned_stock_qty,
 						"shipment_stock_qty": shipment_stock_qty,
@@ -180,6 +212,9 @@ class ShipmentPlan(Document):
 						"weight_per_unit": weight_per_unit,
 						"shipment_weight": shipment_weight,
 						"weight_uom": weight_uom,
+						
+						"forecast_stock_qty": forecast_stock_qty,
+						
 						"stock_status": _get_stock_status(actual_qty, planned_stock_qty, shipment_stock_qty),
 						"source_warehouse": self.source_warehouse,
 						"target_warehouse": self.target_warehouse,
@@ -188,6 +223,11 @@ class ShipmentPlan(Document):
 
 		_update_totals(self)
 		self.status = "Submitted" if self.get("planned_items") else "Draft"
+
+
+def _sync_material_request_statuses(doc):
+	for row in doc.get("material_requests") or []:
+		row.status = frappe.db.get_value("Material Request", row.material_request, "status") or row.status
 
 
 def _update_totals(doc):
@@ -230,6 +270,47 @@ def get_truck_prerequisites(name: str):
 def start_plan(name: str):
 	doc = frappe.get_doc("Shipment Plan", name)
 	return doc.start_plan()
+
+@frappe.whitelist()
+def refresh_execution_status(name: str):
+	doc = frappe.get_doc("Shipment Plan", name)
+	_refresh_execution_status(doc, persist=False)
+	return {"status": doc.status, "pick_list_count": getattr(doc, "pick_list_count", 0), "submitted_pick_list_count": getattr(doc, "submitted_pick_list_count", 0)}
+
+@frappe.whitelist()
+def create_shipment(name: str):
+	doc = frappe.get_doc("Shipment Plan", name)
+	return _get_shipment_defaults_from_plan(doc)
+
+
+def _refresh_execution_status(doc, persist: bool = False):
+	pick_lists = frappe.get_all("Pick List", filters={"shipment_plan": doc.name}, fields=["name", "docstatus"])
+	total = len(pick_lists)
+	submitted = sum(1 for row in pick_lists if row.docstatus == 1)
+	doc.pick_list_count = total
+	doc.submitted_pick_list_count = submitted
+	shipment = frappe.db.get_value(
+		"Shipment",
+		{"shipment_plan": doc.name},
+		["name", "tracking_status"],
+		as_dict=True,
+	)
+
+	if shipment and shipment.name:
+		tracking_status = (shipment.tracking_status or "").strip()
+		if tracking_status in {"In Progress", "In Process"}:
+			doc.status = "In Transit"
+		else:
+			doc.status = "Shipment Created"
+	elif total and submitted == 0:
+		doc.status = "To be Picked"
+	elif total and submitted < total:
+		doc.status = "Partly Picked"
+	elif total and submitted == total:
+		doc.status = "Picked"
+
+	if persist:
+		doc.db_set("status", doc.status)
 
 
 def _create_pick_lists_from_plan(doc):
@@ -312,6 +393,96 @@ def _create_pick_list(doc, rows):
 
 	pick_list.insert(ignore_permissions=True)
 	return pick_list
+
+
+def _get_shipment_defaults_from_plan(doc):
+	shipment_name = frappe.db.get_value("Shipment", {"shipment_plan": doc.name}, "name")
+	if shipment_name:
+		frappe.throw(_("Shipment {0} already exists for this Shipment Plan").format(shipment_name))
+	if doc.status != "Picked":
+		frappe.throw(_("Shipment can be created only after all Pick Lists are submitted"))
+
+	template_weight = flt(_get_shipment_parcel_template_weight(doc.shipment_parcel_template) or 0)
+	count = max(1, int(flt(doc.total_pallets or 1)))
+	return {
+		"shipment_plan": doc.name,
+		"pickup_from_type": "Company",
+		"pickup_company": doc.company,
+		"delivery_to_type": "Company",
+		"delivery_company": doc.company,
+		"parcel_template": doc.shipment_parcel_template,
+		"pallets": "Yes",
+		"shipment_type": "Goods",
+		"description_of_content": doc.name,
+		"shipment_parcel": [
+			{"weight": template_weight or 1, "count": count},
+		],
+		"value_of_goods": max(flt(doc.total_shipment_weight or 1), 1),
+	}
+
+
+def _get_forecast_qty_for_planned_item(company: str, item_code: str, shipment_date, shipment_profile: str, source_warehouse: str, item_uom: str, stock_uom: str):
+	if not company or not item_code or not shipment_date:
+		return {"forecast_qty": 0, "forecast_stock_qty": 0, "forecast_uom": item_uom or stock_uom}
+
+	lead_time = _get_shipment_profile_lead_time_days(shipment_profile, source_warehouse)
+	shipment_delivery_date = add_days(getdate(shipment_date), flt(lead_time or 0))
+	forecast_rows = _get_matching_sales_forecast_rows(company, item_code, shipment_date, shipment_delivery_date)
+	if not forecast_rows:
+		return {"forecast_qty": 0, "forecast_stock_qty": 0, "forecast_uom": item_uom or stock_uom}
+
+	forecast_qty = 0.0
+	forecast_stock_qty = 0.0
+	forecast_uom = item_uom or stock_uom
+	for row in forecast_rows:
+		row_qty = flt(row.get("demand_qty") or row.get("forecast_qty") or 0)
+		row_uom = row.get("uom") or item_uom or stock_uom
+		if row_qty <= 0:
+			continue
+		forecast_uom = row_uom or forecast_uom
+		if row_uom and stock_uom and row_uom != stock_uom:
+			forecast_stock_qty += _convert_item_qty(item_code, row_qty, row_uom, stock_uom)
+		else:
+			forecast_stock_qty += row_qty
+		forecast_qty += row_qty
+	return {"forecast_qty": forecast_qty, "forecast_stock_qty": forecast_stock_qty, "forecast_uom": forecast_uom}
+
+
+def _get_matching_sales_forecast_rows(company: str, item_code: str, shipment_date, shipment_delivery_date):
+	if not company or not item_code or not shipment_date or not shipment_delivery_date:
+		return []
+
+	shipment_date = getdate(shipment_date)
+	shipment_delivery_date = getdate(shipment_delivery_date)
+	forecast_names = frappe.get_all(
+		"Sales Forecast",
+		filters={"company": company, "status": ["in", ["Planned", "Submitted"]]},
+		fields=["name", "from_date"],
+		order_by="from_date asc, modified desc",
+	)
+	for forecast in forecast_names:
+		forecast_doc = frappe.get_doc("Sales Forecast", forecast.name)
+		from_date = getdate(forecast_doc.from_date) if forecast_doc.from_date else None
+		if from_date and from_date > shipment_delivery_date:
+			continue
+		selected_items = {row.item_code for row in (forecast_doc.selected_items or []) if getattr(row, "item_code", None)}
+		if selected_items and item_code not in selected_items:
+			continue
+		for row in sorted(forecast_doc.items or [], key=lambda r: getdate(r.delivery_date) if r.delivery_date else getdate("9999-12-31")):
+			if row.item_code != item_code:
+				continue
+			row_delivery_date = getdate(row.delivery_date) if row.delivery_date else None
+			if row_delivery_date and row_delivery_date < shipment_delivery_date:
+				continue
+			return [row]
+	return []
+
+
+def _get_shipment_profile_lead_time_days(shipment_profile: str, source_warehouse: str) -> float:
+	if not shipment_profile or not source_warehouse:
+		return 0
+	schedule = _get_warehouse_shipment_schedule(shipment_profile, source_warehouse)
+	return flt(schedule.lead_time_working_days or 0) if schedule else 0
 
 
 def _get_source_warehouse_actual_qty(item_code: str, warehouse: str) -> float:

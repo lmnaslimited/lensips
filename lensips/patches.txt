@@ -9,5 +9,6 @@ lensips.patches.v0_0.setup_raven_lens_sales_forecast_agent
 lensips.patches.v0_0.setup_lumi_sales_forecast_revenue
 lensips.patches.v0_0.setup_hakka_reference_data_model
 lensips.patches.v0_0.setup_hakka_reference_data_model_v2
+lensips.patches.v0_0.setup_hakka_reference_data_model_v3
 lensips.patches.v0_0.setup_planning_workspace_and_roles
 lensips.patches.v0_0.bin_logic
