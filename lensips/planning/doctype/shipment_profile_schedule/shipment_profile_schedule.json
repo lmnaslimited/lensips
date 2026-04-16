@@ -1,0 +1,67 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-15 17:08:56.944362",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "source_warehouse",
+  "lead_time_working_days",
+  "shipment_sent_on",
+  "picking_time"
+ ],
+ "fields": [
+  {
+   "columns": 3,
+   "description": "Warehouse from which the consignment is dispatched",
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Source Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "description": "No of days required for the consignment to reach the target warehouse from source warehouse",
+   "fieldname": "lead_time_working_days",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Lead Time (Working Days)",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "description": "Day on which the consignment has to be dispatched from the source warehouse",
+   "fieldname": "shipment_sent_on",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Shipment Sent On",
+   "options": "\nMonday\nTuesday\nWednesday\nThursday\nFriday\nSaturday\nSunday"
+  },
+  {
+   "columns": 2,
+   "description": "No of days before the picking to be done from the date of shipment",
+   "fieldname": "picking_time",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Picking Time"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-15 17:26:29.841224",
+ "modified_by": "Administrator",
+ "module": "Planning",
+ "name": "Shipment Profile Schedule",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

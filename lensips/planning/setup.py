@@ -10,7 +10,7 @@ from frappe.utils import flt
 
 PLANNING_USER_ROLE = "Planning User"
 PLANNING_MANAGER_ROLE = "Planning Manager"
-DEFAULT_UOMS = ("PL1", "PL2", "PLT", "CPL")
+DEFAULT_UOMS = ("CTN", "PL1", "PL2", "PLT", "CPL")
 DEFAULT_WAREHOUSE_PALLET_UOMS = {
 	"121 - H": "PL2",
 	"122 - H": "PL1",
@@ -152,16 +152,25 @@ def ensure_planning_customizations():
 					"options": "UOM",
 					"insert_after": "dry_capacity_plt",
 				},
+			],
+		},
+		ignore_validate=True,
+		update=True,
+	)
+
+	create_custom_fields(
+		{
+			"Warehouse": [
 				{
 					"fieldname": "shipment_profile",
 					"fieldtype": "Link",
 					"label": "Shipment Profile",
-					"options": "Shipment Profile"
+					"options": "Shipment Profile",
+					"insert_after": "pallet_uom",
 				},
 				{
 					"fieldname": "column_break_lensips_warehouse_planning",
 					"fieldtype": "Column Break",
-					"insert_after": "shipment_profile",
 					"insert_after": "shipment_profile",
 				},
 				{
@@ -198,12 +207,16 @@ def ensure_hakka_warehouse_122():
 	if frappe.db.exists("Warehouse", "122 - H"):
 		return
 
+	company = _get_default_company()
+	if not company:
+		return
+
 	parent_warehouse = "NSW - H" if frappe.db.exists("Warehouse", "NSW - H") else None
 	warehouse = frappe.get_doc(
 		{
 			"doctype": "Warehouse",
 			"warehouse_name": "122",
-			"company": _get_default_company(),
+			"company": company,
 			"parent_warehouse": parent_warehouse,
 			"is_group": 0,
 		}
@@ -217,6 +230,7 @@ def ensure_hakka_reference_setup():
 	ensure_required_uoms()
 	ensure_planning_settings()
 	ensure_planning_customizations()
+	ensure_warehouse_shipment_profile_field()
 	ensure_item_layout_customizations()
 	ensure_hakka_warehouse_122()
 	assign_default_warehouse_pallet_uoms()
@@ -479,7 +493,7 @@ def refresh_all_item_pallet_rules():
 	frappe.db.commit()
 
 
-def _get_default_company() -> str:
+def _get_default_company() -> str | None:
 	company = frappe.db.get_value("Global Defaults", None, "default_company")
 	if company:
 		return company
@@ -488,7 +502,7 @@ def _get_default_company() -> str:
 	if company:
 		return company
 
-	frappe.throw("No Company found for creating Hakka warehouse 122 - H.")
+	return None
 
 
 def _sync_item_uom(item, uom_name: str | None, conversion_factor: float):
@@ -699,6 +713,29 @@ def _delete_custom_field_if_exists(doctype: str, fieldname: str):
 	custom_field_name = frappe.db.get_value("Custom Field", {"dt": doctype, "fieldname": fieldname})
 	if custom_field_name:
 		frappe.delete_doc("Custom Field", custom_field_name, ignore_permissions=True, force=True)
+
+
+def ensure_warehouse_shipment_profile_field():
+	field_values = {
+		"doctype": "Custom Field",
+		"dt": "Warehouse",
+		"permlevel": 0,
+		"fieldname": "shipment_profile",
+		"label": "Shipment Profile",
+		"fieldtype": "Link",
+		"options": "Shipment Profile",
+		"insert_after": "pallet_uom",
+		"hidden": 0,
+		"is_system_generated": 1,
+	}
+	custom_field_name = frappe.db.get_value("Custom Field", {"dt": "Warehouse", "fieldname": "shipment_profile"})
+	custom_field = frappe.get_doc("Custom Field", custom_field_name) if custom_field_name else frappe.get_doc(field_values)
+	custom_field.update(field_values)
+	custom_field.flags.ignore_validate = True
+	if custom_field.is_new():
+		custom_field.insert(ignore_permissions=True)
+	else:
+		custom_field.save(ignore_permissions=True)
 
 
 def _move_field_after(field_order: list[str], fieldname: str, insert_after: str) -> list[str]:

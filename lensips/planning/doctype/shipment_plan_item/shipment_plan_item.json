@@ -1,0 +1,276 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-04-15 23:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_section",
+  "item_code",
+  "item_name",
+  "material_request",
+  "material_request_item",
+  "column_break_whjc",
+  "source_warehouse",
+  "target_warehouse",
+  "section_break_dset",
+  "open_qty",
+  "planned_qty",
+  "shipment_qty",
+  "column_break_ndek",
+  "open_uom",
+  "transfer_uom",
+  "shipment_uom",
+  "stock_uom",
+  "column_break_bfxk",
+  "open_uom_conversion",
+  "planned_uom_conversion",
+  "shipment_uom_conversion",
+  "column_break_rpbk",
+  "stock_qty",
+  "planned_stock_qty",
+  "shipment_stock_qty",
+  "actual_qty",
+  "weight_and_volume_section",
+  "weight_per_unit",
+  "shipment_weight",
+  "volume",
+  "column_break_lbpu",
+  "weight_uom",
+  "volume_uom",
+  "stock_status"
+ ],
+ "fields": [
+  {
+   "fieldname": "material_request",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Material Request",
+   "options": "Material Request",
+   "reqd": 1
+  },
+  {
+   "fieldname": "material_request_item",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "Material Request Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Stock UOM",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "transfer_uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Planned UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "shipment_uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Shipment UOM",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "open_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Open Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "planned_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Planned Qty"
+  },
+  {
+   "fieldname": "shipment_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Shipment Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Source Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "target_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Target Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_whjc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_dset",
+   "fieldtype": "Section Break",
+   "label": "Quantity"
+  },
+  {
+   "fieldname": "stock_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Open Stock Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ndek",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "open_uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Open UOM",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_section",
+   "fieldtype": "Section Break",
+   "label": "Item"
+  },
+  {
+   "fieldname": "column_break_bfxk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "open_uom_conversion",
+   "fieldtype": "Float",
+   "label": "Open UOM Conversion",
+   "read_only": 1
+  },
+  {
+   "fieldname": "planned_uom_conversion",
+   "fieldtype": "Float",
+   "label": "Planned UOM Conversion",
+   "read_only": 1
+  },
+  {
+   "fieldname": "weight_and_volume_section",
+   "fieldtype": "Section Break",
+   "label": "Weight And Volume"
+  },
+  {
+   "fieldname": "weight_per_unit",
+   "fieldtype": "Float",
+   "label": "Weight Per Unit",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shipment_weight",
+   "fieldtype": "Float",
+   "label": "Shipment Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "volume",
+   "fieldtype": "Float",
+   "label": "Volume",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_lbpu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "weight_uom",
+   "fieldtype": "Link",
+   "label": "Weight UOM",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "volume_uom",
+   "fieldtype": "Link",
+   "label": "Volume UOM",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shipment_uom_conversion",
+   "fieldtype": "Float",
+   "label": "Shipment UOM Conversion",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_rpbk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "planned_stock_qty",
+   "fieldtype": "Float",
+   "label": "Planned Stock Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shipment_stock_qty",
+   "fieldtype": "Float",
+   "label": "Shipment Stock Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_qty",
+   "fieldtype": "Float",
+   "label": "Actual Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_status",
+   "fieldtype": "Select",
+   "label": "Stock Status",
+   "options": "\nGood\nLow\nShort",
+   "read_only": 1,
+   "in_list_view": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-16 04:27:04.614264",
+ "modified_by": "Administrator",
+ "module": "Planning",
+ "name": "Shipment Plan Item",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

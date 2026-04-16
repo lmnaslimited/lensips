@@ -6,31 +6,26 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "lead_time_working_days",
-  "column_break_shrg",
-  "shipment_sent_on"
+  "schedule_configuration_section",
+  "shipment_profile_schedule"
  ],
  "fields": [
   {
-   "fieldname": "lead_time_working_days",
-   "fieldtype": "Int",
-   "label": "Lead Time (Working Days)"
+   "fieldname": "schedule_configuration_section",
+   "fieldtype": "Section Break",
+   "label": "Schedule Configuration"
   },
   {
-   "fieldname": "column_break_shrg",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "shipment_sent_on",
-   "fieldtype": "Select",
-   "label": "Shipment Sent On",
-   "options": "Sunday\nMonday\nTuesday\nWednesday\nThursday\nFriday\nSaturday"
+   "fieldname": "shipment_profile_schedule",
+   "fieldtype": "Table",
+   "label": "Shipment Profile Schedule",
+   "options": "Shipment Profile Schedule"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-12 23:11:09.818440",
+ "modified": "2026-04-15 17:18:29.354030",
  "modified_by": "Administrator",
  "module": "Planning",
  "name": "Shipment Profile",

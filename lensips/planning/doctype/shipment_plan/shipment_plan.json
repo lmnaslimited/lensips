@@ -6,12 +6,74 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "warehouse",
-  "shipment_parcel_template",
+  "company",
+  "source_warehouse",
+  "target_warehouse",
   "column_break_kkbg",
-  "shipment_profile"
+  "shipment_profile",
+  "shipment_parcel_template",
+  "status",
+  "column_break_hytn",
+  "shipment_date",
+  "picking_date",
+  "material_requests_section",
+  "get_material_requests",
+  "material_requests",
+  "planned_items_section",
+  "get_planned_items",
+  "planned_items",
+  "amended_from",
+  "totals_section",
+  "total_open_qty",
+  "total_stock_qty",
+  "total_weight_per_unit",
+  "column_break_gwbv",
+  "total_planned_qty",
+  "total_planned_stock_qty",
+  "column_break_ttop",
+  "total_shipment_stock_qty",
+  "total_shipment_qty",
+  "total_pallets",
+  "total_shipment_weight"
  ],
  "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "label": "Source Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "target_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Target Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_kkbg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "target_warehouse.shipment_profile",
+   "fetch_if_empty": 1,
+   "fieldname": "shipment_profile",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Shipment Profile",
+   "options": "Shipment Profile",
+   "reqd": 1
+  },
   {
    "fieldname": "shipment_parcel_template",
    "fieldtype": "Link",
@@ -21,30 +83,145 @@
    "reqd": 1
   },
   {
-   "fieldname": "column_break_kkbg",
+   "fieldname": "column_break_hytn",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "warehouse",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Warehouse",
-   "options": "Warehouse",
-   "reqd": 1
+   "fieldname": "shipment_date",
+   "fieldtype": "Date",
+   "label": "Shipment Date",
+   "read_only": 1
   },
   {
-   "fieldname": "shipment_profile",
-   "fieldtype": "Link",
+   "fieldname": "picking_date",
+   "fieldtype": "Date",
+   "label": "Picking Date",
+   "read_only": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
    "in_list_view": 1,
-   "label": "Shipment Profile",
-   "options": "Shipment Profile",
-   "reqd": 1
+   "label": "Status",
+   "options": "\nDraft\nSubmitted\nPicked\nIn Transit\nShipment Created\nComplete\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "material_requests_section",
+   "fieldtype": "Section Break",
+   "label": "Material Requests"
+  },
+  {
+   "fieldname": "material_requests",
+   "fieldtype": "Table",
+   "label": "Material Requests",
+   "options": "Shipment Plan Material Request"
+  },
+  {
+   "fieldname": "planned_items_section",
+   "fieldtype": "Section Break",
+   "label": "Planned Items"
+  },
+  {
+   "fieldname": "planned_items",
+   "fieldtype": "Table",
+   "label": "Planned Items",
+   "options": "Shipment Plan Item"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Shipment Plan",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "get_material_requests",
+   "fieldtype": "Button",
+   "label": "Get Material Requests"
+  },
+  {
+   "fieldname": "get_planned_items",
+   "fieldtype": "Button",
+   "label": "Get Planned Items"
+  },
+  {
+   "fieldname": "totals_section",
+   "fieldtype": "Section Break",
+   "label": "Totals"
+  },
+  {
+   "fieldname": "total_open_qty",
+   "fieldtype": "Float",
+   "label": "Total Open Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_planned_qty",
+   "fieldtype": "Float",
+   "label": "Total Planned Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_shipment_qty",
+   "fieldtype": "Float",
+   "label": "Total Shipment Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_stock_qty",
+   "fieldtype": "Float",
+   "label": "Total Stock Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_planned_stock_qty",
+   "fieldtype": "Float",
+   "label": "Total Planned Stock Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_shipment_stock_qty",
+   "fieldtype": "Float",
+   "label": "Total Shipment Stock Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_weight_per_unit",
+   "fieldtype": "Float",
+   "label": "Total Weight Per Unit",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_shipment_weight",
+   "fieldtype": "Float",
+   "label": "Total Shipment Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_pallets",
+   "fieldtype": "Float",
+   "label": "Total Pallets",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_gwbv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ttop",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-04-13 03:03:22.244779",
+ "modified": "2026-04-16 04:43:03.076862",
  "modified_by": "Administrator",
  "module": "Planning",
  "name": "Shipment Plan",
