@@ -115,7 +115,7 @@ def custom_get_columns():
 #                     )
 #                 )
 #         bin_list = query.run(as_dict=True)
-def get_bin_list(filters):
+def custom_get_bin_list(filters):
 	bin = frappe.qb.DocType("Bin")
 	query = (
 		frappe.qb.from_(bin)

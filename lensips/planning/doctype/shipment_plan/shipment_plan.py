@@ -38,7 +38,8 @@ class ShipmentPlan(Document):
 					flt(self.max_allowed_weight),
 				)
 			)
-		self.build_plan()
+		if not self.get("planned_items"):
+			frappe.throw(_("Please add planned items before submitting the Shipment Plan"))
 		self.status = "Submitted"
 
 	def on_submit(self):
@@ -46,6 +47,21 @@ class ShipmentPlan(Document):
 
 	def on_cancel(self):
 		self.status = "Cancelled"
+
+	@frappe.whitelist()
+	def start_plan(self):
+		if self.docstatus != 1:
+			frappe.throw(_("Shipment Plan must be submitted before starting the plan"))
+
+		if not self.get("planned_items"):
+			frappe.throw(_("Please add planned items before starting the plan"))
+
+		pick_lists = _create_pick_lists_from_plan(self)
+		self.db_set("status", "To be Picked")
+		return {
+			"pick_lists": [pick_list.name for pick_list in pick_lists],
+			"status": "To be Picked",
+		}
 
 	def set_capacity_flags(self):
 		capacity = _get_truck_prerequisites_data(self)
@@ -208,6 +224,94 @@ def recalculate_totals(name: str):
 def get_truck_prerequisites(name: str):
 	doc = frappe.get_doc("Shipment Plan", name)
 	return _get_truck_prerequisites_data(doc)
+
+
+@frappe.whitelist()
+def start_plan(name: str):
+	doc = frappe.get_doc("Shipment Plan", name)
+	return doc.start_plan()
+
+
+def _create_pick_lists_from_plan(doc):
+	pick_lists = []
+	current_rows = []
+	current_shipment_qty = 0.0
+
+	for row in doc.get("planned_items") or []:
+		row_shipment_qty = flt(row.shipment_qty)
+		if row_shipment_qty <= 0:
+			continue
+
+		remaining_row_shipment_qty = row_shipment_qty
+		while remaining_row_shipment_qty > 0:
+			available_in_current_pick_list = 1 - current_shipment_qty
+			segment_shipment_qty = min(remaining_row_shipment_qty, available_in_current_pick_list)
+			segment = _clone_pick_list_row(row, segment_shipment_qty)
+			current_rows.append(segment)
+			current_shipment_qty += segment_shipment_qty
+			remaining_row_shipment_qty -= segment_shipment_qty
+
+			if current_shipment_qty >= 1:
+				pick_lists.append(_create_pick_list(doc, current_rows))
+				current_rows = []
+				current_shipment_qty = 0.0
+
+	if current_rows:
+		pick_lists.append(_create_pick_list(doc, current_rows))
+
+	return pick_lists
+
+
+def _clone_pick_list_row(row, shipment_qty):
+	shipment_qty = flt(shipment_qty)
+	base_shipment_qty = flt(row.shipment_qty)
+	fraction = shipment_qty / base_shipment_qty if base_shipment_qty else 0
+	return frappe._dict(
+		{
+			"item_code": row.item_code,
+			"item_name": row.item_name,
+			"warehouse": row.source_warehouse,
+			"qty": flt(row.planned_qty) * fraction,
+			"stock_qty": flt(row.planned_stock_qty) * fraction,
+			"uom": row.transfer_uom,
+			"conversion_factor": flt(row.planned_uom_conversion or 0) or 1,
+			"stock_uom": row.stock_uom,
+			"material_request": row.material_request,
+			"material_request_item": row.material_request_item,
+			"shipment_qty": shipment_qty,
+		}
+	)
+
+
+def _create_pick_list(doc, rows):
+	pick_list = frappe.new_doc("Pick List")
+	pick_list.company = doc.company
+	pick_list.purpose = "Material Transfer"
+	pick_list.pick_manually = 1
+	pick_list.parent_warehouse = doc.source_warehouse
+	pick_list.status = "Open"
+	pick_list.shipment_plan = doc.name
+
+	for row in rows:
+		pick_list.append(
+			"locations",
+			{
+				"item_code": row.item_code,
+				"item_name": row.item_name,
+				"warehouse": doc.source_warehouse,
+				"qty": flt(row.qty),
+				"stock_qty": flt(row.stock_qty),
+				"uom": row.uom,
+				"conversion_factor": flt(row.conversion_factor or 0) or 1,
+				"stock_uom": row.stock_uom,
+				"shipment_qty": flt(row.shipment_qty),
+				"material_request": row.material_request,
+				"material_request_item": row.material_request_item,
+			},
+		)
+
+	pick_list.insert(ignore_permissions=True)
+	return pick_list
 
 
 def _get_source_warehouse_actual_qty(item_code: str, warehouse: str) -> float:

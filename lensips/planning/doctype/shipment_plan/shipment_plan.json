@@ -16,6 +16,7 @@
   "column_break_hytn",
   "shipment_date",
   "picking_date",
+  "create_pick_list_per_pallet",
   "material_requests_section",
   "get_material_requests",
   "material_requests",
@@ -65,7 +66,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "fetch_from": "target_warehouse.shipment_profile",
+   "fetch_from": "target_warehouse.custom_shipment_profile",
    "fetch_if_empty": 1,
    "fieldname": "shipment_profile",
    "fieldtype": "Link",
@@ -99,12 +100,18 @@
    "read_only": 1
   },
   {
+   "default": "0",
+   "fieldname": "create_pick_list_per_pallet",
+   "fieldtype": "Check",
+   "label": "Create Pick List per Pallet"
+  },
+  {
    "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "\nDraft\nSubmitted\nPicked\nIn Transit\nShipment Created\nComplete\nCancelled",
+   "options": "\nDraft\nSubmitted\nTo be Picked\nPicked\nIn Transit\nShipment Created\nComplete\nCancelled",
    "read_only": 1
   },
   {
@@ -220,8 +227,14 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
- "links": [],
- "modified": "2026-04-16 04:43:03.076862",
+ "links": [
+  {
+   "group": "Stock",
+   "link_doctype": "Pick List",
+   "link_fieldname": "shipment_plan"
+  }
+ ],
+ "modified": "2026-04-16 16:12:00.429943",
  "modified_by": "Administrator",
  "module": "Planning",
  "name": "Shipment Plan",

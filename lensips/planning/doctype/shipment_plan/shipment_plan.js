@@ -28,28 +28,28 @@ function recalculate_planned_row(frm, cdt, cdn, mode) {
 function update_capacity_banner(frm) {
 	if (!frm.doc.name) return;
 	return frm.call("get_truck_prerequisites").then((r) => {
-			const data = r.message || {};
-			if (data.exceeds_truck_capacity) {
-				const parts = [];
-				if (data.exceeds_pallets) {
-					parts.push(__("Pallets {0} exceed allowed {1}.", [flt(data.total_pallets).toFixed(2), flt(data.max_allowed_pallets).toFixed(2)]));
-				}
-				if (data.exceeds_weight) {
-					parts.push(__("Weight {0} exceeds allowed {1}.", [flt(data.total_weight).toFixed(2), flt(data.max_allowed_weight).toFixed(2)]));
-				}
-				frm.dashboard.clear_headline();
-				frm.dashboard.set_headline_alert(parts.join(" "), "red");
-			} else if (data.max_allowed_pallets || data.max_allowed_weight) {
-				frm.dashboard.clear_headline();
-				frm.dashboard.set_headline_alert(
-					__("Truck capacity OK. Pallets {0}/{1}, Weight {2}/{3}.", [
-						flt(data.total_pallets).toFixed(2),
-						flt(data.max_allowed_pallets || 0).toFixed(2),
-						flt(data.total_weight).toFixed(2),
-						flt(data.max_allowed_weight || 0).toFixed(2),
-					]),
-					"green"
-				);
+		const data = r.message || {};
+		if (data.exceeds_truck_capacity) {
+			const parts = [];
+			if (data.exceeds_pallets) {
+				parts.push(__("Pallets {0} exceed allowed {1}.", [flt(data.total_pallets).toFixed(2), flt(data.max_allowed_pallets).toFixed(2)]));
+			}
+			if (data.exceeds_weight) {
+				parts.push(__("Weight {0} exceeds allowed {1}.", [flt(data.total_weight).toFixed(2), flt(data.max_allowed_weight).toFixed(2)]));
+			}
+			frm.dashboard.clear_headline();
+			frm.dashboard.set_headline_alert(parts.join(" "), "red");
+		} else if (data.max_allowed_pallets || data.max_allowed_weight) {
+			frm.dashboard.clear_headline();
+			frm.dashboard.set_headline_alert(
+				__("Truck capacity OK. Pallets {0}/{1}, Weight {2}/{3}.", [
+					flt(data.total_pallets).toFixed(2),
+					flt(data.max_allowed_pallets || 0).toFixed(2),
+					flt(data.total_weight).toFixed(2),
+					flt(data.max_allowed_weight || 0).toFixed(2),
+				]),
+				"green"
+			);
 		} else {
 			frm.dashboard.clear_headline();
 		}
@@ -100,28 +100,43 @@ frappe.ui.form.on("Shipment Plan", {
 
 	refresh(frm) {
 		update_capacity_banner(frm);
+		if (frm.doc.docstatus === 1 && frm.doc.status === "Submitted") {
+			frm.add_custom_button(__("Start Plan"), () => {
+				frappe.confirm(__("Create a Pick List and start this Shipment Plan?"), () => {
+					frm.call("start_plan").then((r) => {
+						const msg = r.message || {};
+						if (msg.pick_lists && msg.pick_lists.length) {
+							frappe.show_alert({
+								message: __("Created {0} Pick List(s): {1}", [msg.pick_lists.length, msg.pick_lists.join(", ")]),
+								indicator: "green",
+							});
+						}
+						frm.reload_doc();
+					});
+				});
+			}, __("Actions"));
+		}
 	},
 });
 
-// Child DocType logic (This is what you requested)
 frappe.ui.form.on("Shipment Plan Item", {
-    planned_qty: function(frm, cdt, cdn) {
-        recalculate_planned_row(frm, cdt, cdn, "planned_qty");
-    },
+	planned_qty(frm, cdt, cdn) {
+		recalculate_planned_row(frm, cdt, cdn, "planned_qty");
+	},
 
-    transfer_uom: function(frm, cdt, cdn) {
-        recalculate_planned_row(frm, cdt, cdn, "recalculate_from_uom");
-    },
+	transfer_uom(frm, cdt, cdn) {
+		recalculate_planned_row(frm, cdt, cdn, "recalculate_from_uom");
+	},
 
-    shipment_uom: function(frm, cdt, cdn) {
-        recalculate_planned_row(frm, cdt, cdn, "shipment_uom");
-    },
+	shipment_uom(frm, cdt, cdn) {
+		recalculate_planned_row(frm, cdt, cdn, "shipment_uom");
+	},
 
-    open_qty: function(frm, cdt, cdn) {
-        recalculate_planned_row(frm, cdt, cdn, "recalculate_from_uom");
-    },
+	open_qty(frm, cdt, cdn) {
+		recalculate_planned_row(frm, cdt, cdn, "recalculate_from_uom");
+	},
 
-    item_code: function(frm, cdt, cdn) {
-        recalculate_planned_row(frm, cdt, cdn, "recalculate_from_uom");
-    }
+	item_code(frm, cdt, cdn) {
+		recalculate_planned_row(frm, cdt, cdn, "recalculate_from_uom");
+	},
 });

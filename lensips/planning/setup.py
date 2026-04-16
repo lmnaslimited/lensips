@@ -194,6 +194,23 @@ def ensure_planning_customizations():
 					"insert_after": "include_in_planning",
 				},
 			],
+			"Pick List": [
+				{
+					"fieldname": "shipment_plan",
+					"label": "Shipment Plan",
+					"fieldtype": "Link",
+					"options": "Shipment Plan",
+					"insert_after": "material_request",
+				},
+			],
+			"Pick List Item": [
+				{
+					"fieldname": "shipment_qty",
+					"label": "Shipment Qty",
+					"fieldtype": "Float",
+					"insert_after": "stock_qty",
+				},
+			],
 		},
 		ignore_validate=True,
 		update=True,
