@@ -1,0 +1,117 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:profile_name",
+ "creation": "2026-04-16 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "profile_name",
+  "target_system",
+  "output_format",
+  "key_fields",
+  "measure_set",
+  "include_units",
+  "include_status",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "profile_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Profile Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "target_system",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Target System",
+   "options": "\nM3\nIBP\nCSV / Excel\nAPI / EDI\nOther"
+  },
+  {
+   "fieldname": "output_format",
+   "fieldtype": "Select",
+   "label": "Output Format",
+   "options": "\nTable\nCSV\nExcel\nJSON\nAPI Payload"
+  },
+  {
+   "fieldname": "key_fields",
+   "fieldtype": "Small Text",
+   "label": "Key Fields"
+  },
+  {
+   "fieldname": "measure_set",
+   "fieldtype": "Table",
+   "label": "Measure Set",
+   "options": "Planning Measure Entry"
+  },
+  {
+   "default": "1",
+   "fieldname": "include_units",
+   "fieldtype": "Check",
+   "label": "Include Units"
+  },
+  {
+   "default": "1",
+   "fieldname": "include_status",
+   "fieldtype": "Check",
+   "label": "Include Status"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Planning",
+ "name": "Integration Output Profile",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Planning Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Planning User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "profile_name"
+}

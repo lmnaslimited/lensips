@@ -1,0 +1,141 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:assignment_name",
+ "creation": "2026-04-16 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "assignment_name",
+  "forecast_model",
+  "object_type",
+  "item_code",
+  "warehouse",
+  "customer",
+  "item_group",
+  "customer_group",
+  "supplier",
+  "planning_segment",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "assignment_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Assignment Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "forecast_model",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Forecast Model",
+   "options": "Forecast Model",
+   "reqd": 1
+  },
+  {
+   "fieldname": "object_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Object Type",
+   "options": "\nItem\nWarehouse\nCustomer\nCustomer Group\nItem Group\nSupplier\nSegment"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "label": "Item Group",
+   "options": "Item Group"
+  },
+  {
+   "fieldname": "customer_group",
+   "fieldtype": "Link",
+   "label": "Customer Group",
+   "options": "Customer Group"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "planning_segment",
+   "fieldtype": "Data",
+   "label": "Planning Segment"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Planning",
+ "name": "Planning Object Assignment",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Planning Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Planning User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "assignment_name"
+}
+

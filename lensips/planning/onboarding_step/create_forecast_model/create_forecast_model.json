@@ -1,0 +1,22 @@
+{
+ "action": "Create Entry",
+ "action_label": "Create Forecast Model",
+ "creation": "2026-04-16 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Onboarding Step",
+ "idx": 4,
+ "is_complete": 0,
+ "is_single": 0,
+ "is_skipped": 0,
+ "modified": "2026-04-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "Create Forecast Model",
+ "owner": "Administrator",
+ "reference_document": "Forecast Model",
+ "show_form_tour": 1,
+ "show_full_form": 1,
+ "title": "Create Forecast Model",
+ "validate_action": 1,
+ "form_tour": "Forecast Model Form Tour"
+}
+

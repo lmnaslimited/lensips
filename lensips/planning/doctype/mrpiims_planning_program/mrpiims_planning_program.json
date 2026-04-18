@@ -1,0 +1,144 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:program_name",
+ "creation": "2026-04-16 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "program_name",
+  "company",
+  "module_scope",
+  "default_currency",
+  "planning_horizon_section",
+  "horizon_start_date",
+  "horizon_months",
+  "bucket_granularity",
+  "fiscal_year_start_month",
+  "column_break_xcna",
+  "is_active",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "program_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Program Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "module_scope",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Module Scope",
+   "options": "\nS&OP\nDemand Planning / MRS\nMRP\nSFC\nDRP\nAll"
+  },
+  {
+   "fieldname": "default_currency",
+   "fieldtype": "Link",
+   "label": "Default Currency",
+   "options": "Currency"
+  },
+  {
+   "fieldname": "planning_horizon_section",
+   "fieldtype": "Section Break",
+   "label": "Planning Horizon"
+  },
+  {
+   "fieldname": "horizon_start_date",
+   "fieldtype": "Date",
+   "label": "Horizon Start Date"
+  },
+  {
+   "fieldname": "horizon_months",
+   "fieldtype": "Int",
+   "label": "Horizon (Months)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "bucket_granularity",
+   "fieldtype": "Select",
+   "label": "Bucket Granularity",
+   "options": "\nWeek\nMonth\nQuarter\nFiscal Period"
+  },
+  {
+   "fieldname": "fiscal_year_start_month",
+   "fieldtype": "Select",
+   "label": "Fiscal Year Start Month",
+   "options": "\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12"
+  },
+  {
+   "fieldname": "column_break_xcna",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Planning",
+ "name": "MRPIIMS Planning Program",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Planning Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Planning User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "program_name"
+}

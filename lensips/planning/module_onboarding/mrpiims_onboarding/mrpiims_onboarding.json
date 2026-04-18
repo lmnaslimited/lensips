@@ -1,0 +1,39 @@
+{
+ "allow_roles": [
+  {
+   "role": "Planning Manager"
+  },
+  {
+   "role": "Planning User"
+  }
+ ],
+ "creation": "2026-04-16 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Module Onboarding",
+ "idx": 1,
+ "is_complete": 0,
+ "modified": "2026-04-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Planning",
+ "name": "MRPIIMS Onboarding",
+ "owner": "Administrator",
+ "steps": [
+  {
+   "step": "Review MRPIIMS Setup Guide"
+  },
+  {
+   "step": "Create Planning Program"
+  },
+  {
+   "step": "Create Process Template"
+  },
+  {
+   "step": "Create Forecast Model"
+  },
+  {
+   "step": "Review Forecast Model"
+  }
+ ],
+ "title": "MRPIIMS Onboarding"
+}
+

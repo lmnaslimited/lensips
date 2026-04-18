@@ -1,7 +1,7 @@
 {
  "app": "lensips",
  "charts": [],
- "content": "[{\"id\":\"5Q6b5-_uyr\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Planning Masters</b></span>\",\"col\":12}},{\"id\":\"nBTlwFvX3a\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning Masters\",\"col\":4}},{\"id\":\"N0fU4xVdY4\",\"type\":\"card\",\"data\":{\"card_name\":\"Core Masters\",\"col\":4}},{\"id\":\"hKjThB0T9j\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning Reports\",\"col\":4}},{\"id\":\"-CAAvC4NP5\",\"type\":\"header\",\"data\":{\"text\":\"<span style=\\\"caret-color: rgb(124, 124, 124);\\\"><b>Transactions</b></span>\",\"col\":12}},{\"id\":\"txIA7sgBLw\",\"type\":\"card\",\"data\":{\"card_name\":\"Demand\",\"col\":4}},{\"id\":\"_BEC9XYf9t\",\"type\":\"card\",\"data\":{\"card_name\":\"Procurement\",\"col\":4}},{\"id\":\"FFQGTEDDTR\",\"type\":\"card\",\"data\":{\"card_name\":\"Production\",\"col\":4}},{\"id\":\"TrJ3e2lDoV\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Stock</b></span>\",\"col\":12}}]",
+ "content": "[{\"id\":\"5Q6b5-_uyr\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Planning Masters</b></span>\",\"col\":12}},{\"id\":\"nBTlwFvX3a\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning Masters\",\"col\":4}},{\"id\":\"N0fU4xVdY4\",\"type\":\"card\",\"data\":{\"card_name\":\"Core Masters\",\"col\":4}},{\"id\":\"hKjThB0T9j\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning Reports\",\"col\":4}},{\"id\":\"mrpiims_hdr\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>MRPIIMS Configuration</b></span>\",\"col\":12}},{\"id\":\"mrpiims_card\",\"type\":\"card\",\"data\":{\"card_name\":\"MRPIIMS Configuration\",\"col\":4}},{\"id\":\"-CAAvC4NP5\",\"type\":\"header\",\"data\":{\"text\":\"<span style=\\\"caret-color: rgb(124, 124, 124);\\\"><b>Transactions</b></span>\",\"col\":12}},{\"id\":\"txIA7sgBLw\",\"type\":\"card\",\"data\":{\"card_name\":\"Demand\",\"col\":4}},{\"id\":\"_BEC9XYf9t\",\"type\":\"card\",\"data\":{\"card_name\":\"Procurement\",\"col\":4}},{\"id\":\"FFQGTEDDTR\",\"type\":\"card\",\"data\":{\"card_name\":\"Production\",\"col\":4}},{\"id\":\"TrJ3e2lDoV\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Stock</b></span>\",\"col\":12}}]",
  "creation": "2026-04-10 00:00:00",
  "custom_blocks": [],
  "docstatus": 0,
@@ -61,6 +61,102 @@
    "link_count": 2,
    "onboard": 0,
    "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MRPIIMS Configuration",
+   "link_count": 8,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forecast Model",
+   "link_count": 0,
+   "link_to": "Forecast Model",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MRPIIMS Planning Program",
+   "link_count": 0,
+   "link_to": "MRPIIMS Planning Program",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MRPIIMS Process Template",
+   "link_count": 0,
+   "link_to": "MRPIIMS Process Template",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Planning Object Assignment",
+   "link_count": 0,
+   "link_to": "Planning Object Assignment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Planning Segmentation Rule",
+   "link_count": 0,
+   "link_to": "Planning Segmentation Rule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Planning Measure",
+   "link_count": 0,
+   "link_to": "Planning Measure",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Planning Time Profile",
+   "link_count": 0,
+   "link_to": "Planning Time Profile",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Integration Output Profile",
+   "link_count": 0,
+   "link_to": "Integration Output Profile",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   },
   {
    "dependencies": "",

@@ -1,0 +1,125 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:rule_name",
+ "creation": "2026-04-16 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "rule_name",
+  "forecast_model",
+  "split_by_customer",
+  "split_by_item",
+  "split_by_supplier",
+  "split_by_warehouse",
+  "customer_attributes",
+  "item_attributes",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "rule_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Rule Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "forecast_model",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Forecast Model",
+   "options": "Forecast Model",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "split_by_customer",
+   "fieldtype": "Check",
+   "label": "Split by Customer"
+  },
+  {
+   "default": "1",
+   "fieldname": "split_by_item",
+   "fieldtype": "Check",
+   "label": "Split by Item"
+  },
+  {
+   "default": "0",
+   "fieldname": "split_by_supplier",
+   "fieldtype": "Check",
+   "label": "Split by Supplier"
+  },
+  {
+   "default": "1",
+   "fieldname": "split_by_warehouse",
+   "fieldtype": "Check",
+   "label": "Split by Warehouse"
+  },
+  {
+   "fieldname": "customer_attributes",
+   "fieldtype": "Small Text",
+   "label": "Customer Attributes"
+  },
+  {
+   "fieldname": "item_attributes",
+   "fieldtype": "Small Text",
+   "label": "Item Attributes"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Planning",
+ "name": "Planning Segmentation Rule",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Planning Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Planning User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "rule_name"
+}
+

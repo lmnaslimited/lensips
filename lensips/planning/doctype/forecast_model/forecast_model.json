@@ -1,0 +1,193 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:model_name",
+ "creation": "2026-04-16 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "model_name",
+  "program",
+  "planning_time_profile",
+  "planning_measure",
+  "scope_section",
+  "company",
+  "default_uom",
+  "history_months",
+  "forecast_months",
+  "bucket_granularity",
+  "assignment_section",
+  "planning_object_assignments",
+  "preprocessing_section",
+  "preprocessing_steps",
+  "forecasting_section",
+  "forecasting_steps",
+  "postprocessing_section",
+  "postprocessing_steps",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "model_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Model Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Program",
+   "options": "MRPIIMS Planning Program",
+   "reqd": 1
+  },
+  {
+   "fieldname": "planning_time_profile",
+   "fieldtype": "Link",
+   "label": "Planning Time Profile",
+   "options": "Planning Time Profile"
+  },
+  {
+   "fieldname": "planning_measure",
+   "fieldtype": "Link",
+   "label": "Primary Measure",
+   "options": "Planning Measure"
+  },
+  {
+   "fieldname": "scope_section",
+   "fieldtype": "Section Break",
+   "label": "General"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_uom",
+   "fieldtype": "Link",
+   "label": "Default UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "history_months",
+   "fieldtype": "Int",
+   "label": "History Months",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "forecast_months",
+   "fieldtype": "Int",
+   "label": "Forecast Months",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "bucket_granularity",
+   "fieldtype": "Select",
+   "label": "Bucket Granularity",
+   "options": "\nWeek\nMonth\nQuarter\nFiscal Period"
+  },
+  {
+   "fieldname": "assignment_section",
+   "fieldtype": "Section Break",
+   "label": "Planning Object Assignment"
+  },
+  {
+   "fieldname": "planning_object_assignments",
+   "fieldtype": "Table",
+   "label": "Planning Object Assignments",
+   "options": "Planning Object Assignment"
+  },
+  {
+   "fieldname": "preprocessing_section",
+   "fieldtype": "Section Break",
+   "label": "Preprocessing Steps"
+  },
+  {
+   "fieldname": "preprocessing_steps",
+   "fieldtype": "Table",
+   "label": "Preprocessing Steps",
+   "options": "Forecast Model Step"
+  },
+  {
+   "fieldname": "forecasting_section",
+   "fieldtype": "Section Break",
+   "label": "Forecasting Steps"
+  },
+  {
+   "fieldname": "forecasting_steps",
+   "fieldtype": "Table",
+   "label": "Forecasting Steps",
+   "options": "Forecast Model Step"
+  },
+  {
+   "fieldname": "postprocessing_section",
+   "fieldtype": "Section Break",
+   "label": "Postprocessing Steps"
+  },
+  {
+   "fieldname": "postprocessing_steps",
+   "fieldtype": "Table",
+   "label": "Postprocessing Steps",
+   "options": "Forecast Model Step"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Planning",
+ "name": "Forecast Model",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Planning Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Planning User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "model_name"
+}
+

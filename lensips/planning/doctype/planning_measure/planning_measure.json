@@ -1,0 +1,119 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:measure_name",
+ "creation": "2026-04-16 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "measure_name",
+  "measure_category",
+  "label",
+  "data_type",
+  "uom",
+  "precision",
+  "is_default_visible",
+  "is_input_enabled"
+ ],
+ "fields": [
+  {
+   "fieldname": "measure_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Measure Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "measure_category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Measure Category",
+   "options": "\nActual\nForecast\nAdjustment\nDemand\nSupply\nStock\nRevenue\nCapacity"
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Label"
+  },
+  {
+   "fieldname": "data_type",
+   "fieldtype": "Select",
+   "label": "Data Type",
+   "options": "\nFloat\nCurrency\nInt\nPercent\nCheck"
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "precision",
+   "fieldtype": "Int",
+   "label": "Precision",
+   "non_negative": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "is_default_visible",
+   "fieldtype": "Check",
+   "label": "Is Default Visible"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_input_enabled",
+   "fieldtype": "Check",
+   "label": "Is Input Enabled"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Planning",
+ "name": "Planning Measure",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Planning Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Planning User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "measure_name"
+}
+

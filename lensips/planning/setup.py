@@ -262,6 +262,281 @@ def ensure_hakka_reference_setup():
 	assign_default_warehouse_pallet_uoms()
 
 
+def ensure_mrpiims_sample_setup():
+	company = _get_default_company()
+	if not company:
+		return
+
+	ensure_mrpiims_sample_masters(company)
+	program = _upsert_sample_doc(
+		"MRPIIMS Planning Program",
+		"MRPIIMS Hakka Demo Program",
+		{
+			"program_name": "MRPIIMS Hakka Demo Program",
+			"company": company,
+			"module_scope": "All",
+			"default_currency": _get_company_currency(company),
+			"horizon_start_date": frappe.utils.getdate("2026-01-01"),
+			"horizon_months": 18,
+			"bucket_granularity": "Week",
+			"fiscal_year_start_month": "1",
+			"is_active": 1,
+			"notes": "Seeded from the Hakka MRPIIMS demo scenario.",
+		},
+	)
+
+	for template in _sample_process_templates(company):
+		_upsert_sample_doc(
+			"MRPIIMS Process Template",
+			template["template_name"],
+			template,
+		)
+
+	for measure in _sample_planning_measures():
+		_upsert_sample_doc(
+			"Planning Measure",
+			measure["measure_name"],
+			measure,
+		)
+
+	_upsert_sample_doc(
+		"Planning Time Profile",
+		"Hakka 18M Weekly",
+		{
+			"profile_name": "Hakka 18M Weekly",
+			"time_granularity": "Week",
+			"fiscal_calendar": None,
+			"rolling_horizon_months": 18,
+			"history_months": 36,
+			"forecast_months": 18,
+			"quarter_count": 3,
+			"week_start_day": "Monday",
+			"description": "18 month weekly horizon for Hakka demo planning.",
+		},
+	)
+
+	model = _upsert_sample_doc(
+		"Forecast Model",
+		"Hakka S&OP Base Model",
+		{
+			"model_name": "Hakka S&OP Base Model",
+			"program": program.name,
+			"planning_time_profile": "Hakka 18M Weekly",
+			"planning_measure": "Forecast Qty",
+			"company": company,
+			"default_uom": "CTN",
+			"history_months": 36,
+			"forecast_months": 18,
+			"bucket_granularity": "Week",
+			"notes": "Base model for sales forecasting, MRS, MRP, and DRP demonstrations.",
+		},
+	)
+
+	_assign_steps_and_rules(model.name)
+
+
+def ensure_mrpiims_sample_masters(company: str):
+	_upsert_tree_doc(
+		"Item Group",
+		"Finished Goods",
+		{
+			"item_group_name": "Finished Goods",
+			"is_group": 0,
+			"parent_item_group": "All Item Groups",
+		},
+	)
+	_upsert_tree_doc(
+		"Item Group",
+		"Imported Goods",
+		{
+			"item_group_name": "Imported Goods",
+			"is_group": 0,
+			"parent_item_group": "All Item Groups",
+		},
+	)
+	_upsert_tree_doc(
+		"Item Group",
+		"Manufactured Goods",
+		{
+			"item_group_name": "Manufactured Goods",
+			"is_group": 0,
+			"parent_item_group": "All Item Groups",
+		},
+	)
+	_upsert_tree_doc(
+		"Customer Group",
+		"Modern Trade",
+		{
+			"customer_group_name": "Modern Trade",
+			"is_group": 0,
+			"parent_customer_group": "All Customer Groups",
+		},
+	)
+	if not frappe.db.exists("Warehouse", "NSW - H"):
+		parent = frappe.db.get_value("Warehouse", {"warehouse_name": "NSW"}, "name")
+		if not parent:
+			parent = frappe.db.get_value("Warehouse", {"is_group": 1, "company": company}, "name")
+		if parent:
+			frappe.get_doc(
+				{
+					"doctype": "Warehouse",
+					"warehouse_name": "NSW - H",
+					"company": company,
+					"parent_warehouse": parent,
+					"is_group": 0,
+				}
+			).insert(ignore_permissions=True)
+
+
+def _assign_steps_and_rules(model_name: str):
+	_upsert_sample_doc(
+		"Planning Segmentation Rule",
+		"Hakka Customer Item Warehouse Split",
+		{
+			"rule_name": "Hakka Customer Item Warehouse Split",
+			"forecast_model": model_name,
+			"split_by_customer": 1,
+			"split_by_item": 1,
+			"split_by_supplier": 1,
+			"split_by_warehouse": 1,
+			"customer_attributes": "Forecast Group, Buying Group, Price List",
+			"item_attributes": "Item Type, Item Temperature, Product Segment, Sales Category, Supplier",
+			"description": "Demo segmentation based on Hakka master data attributes.",
+		},
+	)
+
+	_upsert_sample_doc(
+		"Planning Object Assignment",
+		"Hakka NSW Imported Items",
+		{
+			"assignment_name": "Hakka NSW Imported Items",
+			"forecast_model": model_name,
+			"object_type": "Warehouse",
+			"warehouse": "NSW - H",
+			"planning_segment": "Imported Product Planning",
+			"notes": "Imported goods planning from Silverwater and external NSW warehouses.",
+		},
+	)
+
+	_upsert_sample_doc(
+		"Planning Object Assignment",
+		"Hakka Manufacturing Items",
+		{
+			"assignment_name": "Hakka Manufacturing Items",
+			"forecast_model": model_name,
+			"object_type": "Item Group",
+			"item_group": "Finished Goods",
+			"planning_segment": "Manufactured Product Planning",
+			"notes": "Finished goods and WIP planning for MRP / SFC.",
+		},
+	)
+
+	_upsert_sample_doc(
+		"Planning Object Assignment",
+		"Hakka Customer Segments",
+		{
+			"assignment_name": "Hakka Customer Segments",
+			"forecast_model": model_name,
+			"object_type": "Customer Group",
+			"customer_group": "Modern Trade",
+			"planning_segment": "S&OP Demand Planning",
+			"notes": "Customer-driven segmentation for sales forecasting.",
+		},
+	)
+
+def _seed_forecast_model_steps(model_name: str):
+	# Intentionally left as a no-op until the Forecast Model child tables are
+	# synced on the target site. The demo seed keeps the parent configuration
+	# records in place so users can add steps from the form UI after migration.
+	return None
+
+
+def _sample_process_templates(company: str):
+	return [
+		{
+			"template_name": "Hakka S&OP Template",
+			"process_type": "S&OP",
+			"description": "Sales budget and revenue forecasting template.",
+			"enable_reconciliation": 1,
+			"enable_manual_override": 1,
+			"output_uom": "Carton",
+		},
+		{
+			"template_name": "Hakka MRS Template",
+			"process_type": "Demand Planning / MRS",
+			"description": "Demand planning for stock on hand, inbound stock, and rolling quarters.",
+			"enable_reconciliation": 1,
+			"enable_manual_override": 1,
+			"output_uom": "Inner",
+		},
+		{
+			"template_name": "Hakka MRP Template",
+			"process_type": "MRP",
+			"description": "Materials requirements planning and procurement view.",
+			"enable_reconciliation": 1,
+			"enable_manual_override": 1,
+			"output_uom": "Kg",
+		},
+		{
+			"template_name": "Hakka SFC Template",
+			"process_type": "SFC",
+			"description": "Manufacturing execution and shop floor control template.",
+			"enable_reconciliation": 0,
+			"enable_manual_override": 1,
+			"output_uom": "Pallet",
+		},
+		{
+			"template_name": "Hakka DRP Template",
+			"process_type": "DRP",
+			"description": "Distribution requirements planning for weekly movements.",
+			"enable_reconciliation": 1,
+			"enable_manual_override": 1,
+			"output_uom": "Carton",
+		},
+	]
+
+
+def _sample_planning_measures():
+	return [
+		{"measure_name": "Forecast Qty", "measure_category": "Forecast", "label": "Forecast Qty", "data_type": "Float", "is_default_visible": 1},
+		{"measure_name": "Actual Qty", "measure_category": "Actual", "label": "Actual Qty", "data_type": "Float", "is_default_visible": 1},
+		{"measure_name": "Demand Qty", "measure_category": "Demand", "label": "Demand Qty", "data_type": "Float", "is_default_visible": 1},
+		{"measure_name": "Safety Stock", "measure_category": "Stock", "label": "Safety Stock", "data_type": "Float", "is_default_visible": 1},
+		{"measure_name": "Min Stock", "measure_category": "Stock", "label": "Min Stock", "data_type": "Float", "is_default_visible": 1},
+		{"measure_name": "Max Stock", "measure_category": "Stock", "label": "Max Stock", "data_type": "Float", "is_default_visible": 1},
+		{"measure_name": "Revenue", "measure_category": "Revenue", "label": "Revenue", "data_type": "Currency", "is_default_visible": 1},
+		{"measure_name": "Released Qty", "measure_category": "Supply", "label": "Released Qty", "data_type": "Float", "is_default_visible": 1},
+	]
+
+
+def _upsert_sample_doc(doctype: str, name: str, values: dict):
+	if frappe.db.exists(doctype, name):
+		doc = frappe.get_doc(doctype, name)
+		for key, value in values.items():
+			doc.set(key, value)
+		doc.save(ignore_permissions=True)
+		return doc
+	doc = frappe.get_doc({"doctype": doctype, "name": name, **values})
+	doc.insert(ignore_permissions=True)
+	return doc
+
+
+def _upsert_tree_doc(doctype: str, name: str, values: dict):
+	if frappe.db.exists(doctype, name):
+		doc = frappe.get_doc(doctype, name)
+		for key, value in values.items():
+			doc.set(key, value)
+		doc.save(ignore_permissions=True)
+		return doc
+	doc = frappe.get_doc({"doctype": doctype, "name": name, **values})
+	doc.insert(ignore_permissions=True)
+	return doc
+
+
+def _get_company_currency(company: str):
+	return frappe.db.get_value("Company", company, "default_currency") or "USD"
+
+
 def ensure_planning_roles():
 	for role_name in (PLANNING_USER_ROLE, PLANNING_MANAGER_ROLE):
 		if frappe.db.exists("Role", role_name):
