@@ -11,5 +11,6 @@ lensips.patches.v0_0.setup_hakka_reference_data_model
 lensips.patches.v0_0.setup_hakka_reference_data_model_v2
 lensips.patches.v0_0.setup_hakka_reference_data_model_v3
 lensips.patches.v0_0.setup_planning_workspace_and_roles
+lensips.patches.v0_0.setup_item_characteristics_fields
 lensips.patches.v0_0.setup_mrpiims_sample_setup
 lensips.patches.v0_0.bin_logic

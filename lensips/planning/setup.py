@@ -158,6 +158,63 @@ def ensure_planning_customizations():
 		update=True,
 	)
 
+
+def ensure_item_characteristics_custom_fields():
+	create_custom_fields(
+		{
+			"Item": [
+				{
+					"fieldname": "lensips_item_characteristics_section",
+					"label": "Characteristics",
+					"fieldtype": "Section Break",
+					"insert_after": "planning_source_type",
+				},
+				{
+					"fieldname": "sales_category",
+					"label": "Sales Category",
+					"fieldtype": "Select",
+					"options": "\nFMB\nBAKERY\nHand Held\nFINGER FOOD\nENTREE\nDIM SUM\nMEALS\nPLANT BASED\nDESSERT",
+					"insert_after": "lensips_item_characteristics_section",
+					"in_list_view": 1,
+				},
+				{
+					"fieldname": "product_segment",
+					"label": "Product Segment",
+					"fieldtype": "Select",
+					"options": "\nBALL\nBUN\nCAKE\nDIM SIM\nDUMPLING\nFRIED RICE\nPASTE\nPASTRY\nPUFF\nROTI\nSLICE\nTOFU\nWONTON\nCOMBO\nIMITATION\nNAAN\nRICE BALL\nSAUSAGE",
+					"insert_after": "sales_category",
+					"in_list_view": 1,
+				},
+				{
+					"fieldname": "product_variant",
+					"label": "Product Variant",
+					"fieldtype": "Select",
+					"options": "\nFish\nBeef\nPork\nCuttlefish\nFlower Roll\nSalted Egg Yolk\nBlack sesame\nPandan\nUnspecified\nPlain\nBao\nBaoger\nChicken\nVegetable\nSeafood\nPrawn\nEgg\nMushroom\nCombination\nSpring Roll",
+					"insert_after": "product_segment",
+					"in_list_view": 1,
+				},
+				{
+					"fieldname": "made_by_hakka",
+					"label": "Made By Hakka",
+					"fieldtype": "Select",
+					"options": "\nYes\nNo",
+					"insert_after": "product_variant",
+					"in_list_view": 1,
+				},
+				{
+					"fieldname": "product_line",
+					"label": "Product Line",
+					"fieldtype": "Select",
+					"options": "\nFresh\nFrozen\nImport Purchase",
+					"insert_after": "made_by_hakka",
+					"in_list_view": 1,
+				},
+			]
+		},
+		ignore_validate=True,
+		update=True,
+	)
+
 	create_custom_fields(
 		{
 			"Warehouse": [
@@ -400,7 +457,7 @@ def _assign_steps_and_rules(model_name: str):
 			"split_by_supplier": 1,
 			"split_by_warehouse": 1,
 			"customer_attributes": "Forecast Group, Buying Group, Price List",
-			"item_attributes": "Item Type, Item Temperature, Product Segment, Sales Category, Supplier",
+			"item_attributes": "Item Type, Item Temperature, Sales Category, Product Segment, Product Variant, Made By Hakka, Product Line, Supplier",
 			"description": "Demo segmentation based on Hakka master data attributes.",
 		},
 	)
