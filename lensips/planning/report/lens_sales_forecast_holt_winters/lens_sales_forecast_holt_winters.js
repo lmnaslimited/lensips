@@ -1,5 +1,6 @@
 frappe.query_reports["LENS Sales Forecast Holt Winters"] = {
 	onload: function (report) {
+		report._sales_forecast_export_timer = null;
 		add_export_button(report);
 	},
 	filters: [
@@ -82,6 +83,12 @@ frappe.query_reports["LENS Sales Forecast Holt Winters"] = {
 			default: 0,
 		},
 		{
+			fieldname: "show_actual",
+			label: __("Show Actuals"),
+			fieldtype: "Check",
+			default: 0,
+		},
+		{
 			fieldname: "periodicity",
 			label: __("Periodicity"),
 			fieldtype: "Select",
@@ -145,19 +152,29 @@ frappe.query_reports["LENS Sales Forecast Holt Winters"] = {
 
 function add_export_button(report) {
 	report.page.add_inner_button(__("Export to Sales Forecast"), () => {
-		const data = (frappe.query_report.data || []).filter((row) => row && row.row_type === "item");
 		const filters = frappe.query_report.get_filter_values();
 
 		frappe.call({
 			method: "lensips.planning.api.forecast_api.create_sales_forecast_from_report",
 			args: {
-				data,
 				filters,
 			},
 			freeze: true,
 			freeze_message: __("Creating Sales Forecast..."),
 			callback: function (r) {
 				if (!r.message) {
+					return;
+				}
+
+				if (r.message.queued) {
+					frappe.show_alert(
+						{
+							message: r.message.message || __("Sales Forecast export has been queued."),
+							indicator: "orange",
+						},
+						5
+					);
+					poll_export_job(report, r.message.job_id);
 					return;
 				}
 
@@ -171,4 +188,91 @@ function add_export_button(report) {
 			},
 		});
 	});
+
+	report.page.add_inner_button(__("Export Live to Sales Forecast"), () => {
+		const filters = frappe.query_report.get_filter_values();
+
+		frappe.call({
+			method: "lensips.planning.api.forecast_api.create_sales_forecast_from_report_live",
+			args: {
+				filters,
+			},
+			freeze: true,
+			freeze_message: __("Creating Sales Forecast live..."),
+			callback: function (r) {
+				if (!r.message) {
+					return;
+				}
+
+				const forecast_names = r.message.forecast_names || (r.message.forecast_name ? [r.message.forecast_name] : []);
+				frappe.msgprint(
+					__(
+						"Sales Forecast Created: {0}",
+						[forecast_names.length ? forecast_names.join(", ") : __("No document returned")]
+					)
+				);
+
+				if (report.refresh) {
+					report.refresh();
+				}
+			},
+		});
+	});
+}
+
+function poll_export_job(report, job_id) {
+	if (!job_id) {
+		return;
+	}
+
+	if (report._sales_forecast_export_timer) {
+		clearInterval(report._sales_forecast_export_timer);
+	}
+
+	const interval_ms = 5000;
+	const poll = () => {
+		frappe.call({
+			method: "lensips.planning.api.forecast_api.get_sales_forecast_export_status",
+			args: {
+				job_id,
+			},
+			callback: function (r) {
+				if (!r.message) {
+					return;
+				}
+
+				if (r.message.is_finished) {
+					clearInterval(report._sales_forecast_export_timer);
+					report._sales_forecast_export_timer = null;
+
+					const result = r.message.result || {};
+					const forecast_names = result.forecast_names || (result.forecast_name ? [result.forecast_name] : []);
+					frappe.msgprint(
+						__(
+							"Sales Forecast Created: {0}",
+							[forecast_names.length ? forecast_names.join(", ") : __("No document returned")]
+						)
+					);
+
+					if (report.refresh) {
+						report.refresh();
+					}
+					return;
+				}
+
+				if (r.message.is_failed) {
+					clearInterval(report._sales_forecast_export_timer);
+					report._sales_forecast_export_timer = null;
+					frappe.msgprint({
+						title: __("Sales Forecast Export Failed"),
+						indicator: "red",
+						message: r.message.message || __("The background export job failed."),
+					});
+				}
+			},
+		});
+	};
+
+	poll();
+	report._sales_forecast_export_timer = setInterval(poll, interval_ms);
 }

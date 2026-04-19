@@ -22,7 +22,127 @@ DEFAULT_WAREHOUSE_PALLET_UOMS = {
 OBSOLETE_ITEM_CUSTOM_FIELDS = ("default_pallet_profile", "column_break_lensips_item_planning")
 
 
+def ensure_sales_forecast_locked_field():
+	ensure_sales_forecast_item_fields()
+
+
+def sync_sales_forecast_demand(doc, method=None):
+	for row in doc.get("items") or []:
+		if flt(row.locked):
+			continue
+		sync_sales_forecast_item_demand(row)
+
+
+def sync_sales_forecast_item_demand(row):
+	actual_qty = flt(row.actual_qty)
+	actual_value = flt(row.actual_value)
+	adjust_qty = flt(row.adjust_qty)
+	adjust_value = (actual_value / actual_qty) * adjust_qty if actual_qty else 0
+
+	row.adjust_value = adjust_value
+	row.demand_qty = actual_qty + adjust_qty
+	row.demand_value = actual_value + adjust_value
+
+
+def ensure_sales_forecast_item_fields():
+	create_custom_fields(
+		{
+			"Sales Forecast Item": [
+				{
+					"fieldname": "locked",
+					"label": "Locked",
+					"fieldtype": "Check",
+					"insert_after": "forecast_value",
+					"default": "0",
+					"in_list_view": 1,
+					"read_only": 0,
+					"allow_on_submit": 1,
+				},
+				{
+					"fieldname": "actual_qty",
+					"label": "Actual Qty",
+					"fieldtype": "Float",
+					"insert_after": "locked",
+					"default": "0",
+					"in_list_view": 1,
+					"read_only": 1,
+					"allow_on_submit": 1,
+					"non_negative": 1,
+				},
+				{
+					"fieldname": "actual_value",
+					"label": "Actual Value",
+					"fieldtype": "Currency",
+					"insert_after": "actual_qty",
+					"default": "0",
+					"in_list_view": 1,
+					"read_only": 1,
+					"allow_on_submit": 1,
+					"options": "currency",
+				},
+				{
+					"fieldname": "price_list_rate",
+					"label": "Price List Rate",
+					"fieldtype": "Currency",
+					"insert_after": "actual_value",
+					"default": "0",
+					"read_only": 1,
+					"allow_on_submit": 1,
+					"hidden": 1,
+					"options": "currency",
+				},
+				{
+					"fieldname": "adjust_value",
+					"label": "Adjust Value",
+					"fieldtype": "Currency",
+					"insert_after": "price_list_rate",
+					"default": "0",
+					"in_list_view": 1,
+					"read_only": 1,
+					"allow_on_submit": 1,
+					"options": "currency",
+				},
+				{
+					"fieldname": "demand_value",
+					"label": "Demand Value",
+					"fieldtype": "Currency",
+					"insert_after": "adjust_value",
+					"default": "0",
+					"in_list_view": 1,
+					"read_only": 1,
+					"allow_on_submit": 1,
+					"options": "currency",
+				},
+			]
+		}
+	)
+
+	_upsert_property_setter("Sales Forecast", "items", "allow_on_submit", "1", "Check")
+	_upsert_property_setter("Sales Forecast", "selected_items", "allow_on_submit", "1", "Check")
+	_upsert_property_setter("Sales Forecast", "forecast_entries", "allow_on_submit", "1", "Check")
+
+	_upsert_property_setter("Sales Forecast Item", "locked", "read_only", "0", "Check")
+	_upsert_property_setter("Sales Forecast Item", "locked", "allow_on_submit", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "actual_qty", "read_only", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "actual_qty", "allow_on_submit", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "actual_value", "read_only", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "actual_value", "allow_on_submit", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "price_list_rate", "read_only", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "price_list_rate", "allow_on_submit", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "adjust_value", "read_only", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "adjust_value", "allow_on_submit", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "demand_value", "read_only", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "demand_value", "allow_on_submit", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "forecast_qty", "allow_on_submit", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "forecast_value", "allow_on_submit", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "adjust_qty", "allow_on_submit", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "demand_qty", "read_only", "1", "Check")
+	_upsert_property_setter("Sales Forecast Item", "demand_qty", "allow_on_submit", "1", "Check")
+
+
 def ensure_planning_customizations():
+	ensure_sales_forecast_locked_field()
+
 	create_custom_fields(
 		{
 			"Item": [

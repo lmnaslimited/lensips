@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "allow_import": 1,
  "creation": "2026-04-08 00:00:00.000000",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -8,25 +9,14 @@
  "field_order": [
   "company",
   "customer",
-  "sales_group",
-  "group_key",
   "item_code",
-  "item_name",
-  "item_group",
   "warehouse",
   "period",
-  "period_label",
-  "actual_qty",
-  "actual_value",
   "forecast_qty",
   "forecast_value",
-  "adjust_qty",
-  "adjust_value",
-  "demand_qty",
-  "demand_value",
   "price_list",
-  "price_list_rate",
-  "is_locked"
+  "actual_qty",
+  "actual_value"
  ],
  "fields": [
   {
@@ -48,41 +38,12 @@
   },
   {
    "columns": 2,
-   "fieldname": "sales_group",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Sales Group"
-  },
-  {
-   "columns": 2,
-   "fieldname": "group_key",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Group Key"
-  },
-  {
-   "columns": 2,
    "fieldname": "item_code",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Item Code",
    "options": "Item",
    "reqd": 1
-  },
-  {
-   "columns": 2,
-   "fieldname": "item_name",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Item Name"
-  },
-  {
-   "columns": 2,
-   "fieldname": "item_group",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Item Group",
-   "options": "Item Group"
   },
   {
    "columns": 2,
@@ -102,29 +63,6 @@
   },
   {
    "columns": 2,
-   "fieldname": "period_label",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Period Label"
-  },
-  {
-   "columns": 2,
-   "fieldname": "actual_qty",
-   "fieldtype": "Float",
-   "in_list_view": 1,
-   "label": "Actual Qty",
-   "non_negative": 1
-  },
-  {
-   "columns": 2,
-   "fieldname": "actual_value",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Actual Value",
-   "options": "Company:company:default_currency"
-  },
-  {
-   "columns": 2,
    "fieldname": "forecast_qty",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -141,37 +79,6 @@
   },
   {
    "columns": 2,
-   "fieldname": "adjust_qty",
-   "fieldtype": "Float",
-   "in_list_view": 1,
-   "label": "Adjust Qty"
-  },
-  {
-   "columns": 2,
-   "fieldname": "adjust_value",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Adjust Value",
-   "options": "Company:company:default_currency"
-  },
-  {
-   "columns": 2,
-   "fieldname": "demand_qty",
-   "fieldtype": "Float",
-   "in_list_view": 1,
-   "label": "Demand Qty",
-   "non_negative": 1
-  },
-  {
-   "columns": 2,
-   "fieldname": "demand_value",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Demand Value",
-   "options": "Company:company:default_currency"
-  },
-  {
-   "columns": 2,
    "fieldname": "price_list",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -180,18 +87,19 @@
   },
   {
    "columns": 2,
-   "fieldname": "price_list_rate",
-   "fieldtype": "Currency",
+   "fieldname": "actual_qty",
+   "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Price List Rate",
-   "options": "Company:company:default_currency"
+   "label": "Actual Qty",
+   "non_negative": 1
   },
   {
-   "columns": 1,
-   "fieldname": "is_locked",
-   "fieldtype": "Check",
+   "columns": 2,
+   "fieldname": "actual_value",
+   "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Locked"
+   "label": "Actual Value",
+   "options": "Company:company:default_currency"
   }
  ],
  "grid_page_length": 50,

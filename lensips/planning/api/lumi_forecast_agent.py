@@ -12,8 +12,8 @@ from frappe.model.rename_doc import rename_doc
 from lensips.planning.report.lens_sales_forecast_holt_winters import (
 	lens_sales_forecast_holt_winters as forecast_report,
 )
+from lensips.planning.api import forecast_api
 from lensips.planning.setup import ensure_hakka_reference_setup
-from lensips.planning.services.forecast_export_service import create_sales_forecast
 
 
 REPORT_NAME = "LENS Sales Forecast Holt Winters"
@@ -203,22 +203,14 @@ def export_lens_sales_forecast_to_sales_forecast(
 		customer=customer,
 		sales_group=sales_group,
 	)
-	result = create_sales_forecast(
-		data=filtered_rows,
+	result = forecast_api.create_sales_forecast_from_report(
 		filters=_serialize_filters(normalized_filters),
+		submit_document=submit_document,
 	)
-
-	if cint(submit_document):
-		doc = frappe.get_doc("Sales Forecast", result["forecast_name"])
-		if doc.docstatus == 0:
-			doc.submit()
-		result["message"] = _("Sales Forecast {0} created and submitted.").format(doc.name)
-		result["submitted"] = 1
-	else:
-		result["submitted"] = 0
 
 	result["exported_rows"] = len(filtered_rows)
 	result["filters"] = _serialize_filters(normalized_filters)
+	result["requested_submit_document"] = cint(submit_document)
 	return result
 
 
@@ -386,26 +378,6 @@ def ensure_revenue_customizations():
 					"allow_on_submit": 1,
 					"in_list_view": 1,
 				},
-				{
-					"fieldname": "adjust_value",
-					"label": "Adjust Value",
-					"fieldtype": "Currency",
-					"insert_after": "adjust_qty",
-					"options": "currency",
-					"read_only": 1,
-					"allow_on_submit": 1,
-					"in_list_view": 1,
-				},
-				{
-					"fieldname": "demand_value",
-					"label": "Demand Value",
-					"fieldtype": "Currency",
-					"insert_after": "demand_qty",
-					"options": "currency",
-					"read_only": 1,
-					"allow_on_submit": 1,
-					"in_list_view": 1,
-				},
 			],
 			"Sales Order Item": [
 				{
@@ -477,7 +449,7 @@ def _run_report(**kwargs):
 		"sales_group": kwargs.get("sales_group"),
 	}
 	normalized_filters = forecast_report.normalize_filters(filters)
-	columns, data, _message, chart = forecast_report.execute(filters)
+	columns, data, _message, chart, _summary = forecast_report.execute(filters)
 	return columns, data, chart, normalized_filters
 
 
@@ -956,20 +928,14 @@ def export_lens_sales_forecast_to_sales_forecast(
 		sales_category=sales_category,
 		warehouse=warehouse,
 	)
-	result = create_sales_forecast(data=filtered_rows, filters=_serialize_filters(normalized_filters))
-
-	if cint(submit_document):
-		for forecast_name in result.get("forecast_names") or ([result.get("forecast_name")] if result.get("forecast_name") else []):
-			doc = frappe.get_doc("Sales Forecast", forecast_name)
-			if doc.docstatus == 0:
-				doc.submit()
-		result["message"] = _("Sales Forecast(s) successfully created and submitted.")
-		result["submitted"] = 1
-	else:
-		result["submitted"] = 0
+	result = forecast_api.create_sales_forecast_from_report(
+		filters=_serialize_filters(normalized_filters),
+		submit_document=submit_document,
+	)
 
 	result["exported_rows"] = len(filtered_rows)
 	result["filters"] = _serialize_filters(normalized_filters)
+	result["requested_submit_document"] = cint(submit_document)
 	return result
 
 
@@ -1000,7 +966,7 @@ def _run_report(**kwargs):
 		"show_actual_variance": kwargs.get("show_actual_variance") or 0,
 	}
 	normalized_filters = forecast_report.normalize_filters(filters)
-	columns, data, _message, chart = forecast_report.execute(filters)
+	columns, data, _message, chart, _summary = forecast_report.execute(filters)
 	return columns, data, chart, normalized_filters
 
 

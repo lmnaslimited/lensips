@@ -600,10 +600,19 @@ def execute(filters=None):
 	masters = load_master_maps(source, normalized_filters)
 	report_state = build_report_state(source, masters, normalized_filters)
 	columns = get_columns(report_state, normalized_filters)
-	data = build_tree_rows(report_state, normalized_filters)
+	data = build_tree_rows(report_state, normalized_filters, include_future_actuals=normalized_filters.show_actual)
 	chart = get_chart_data(report_state)
 	summary = get_summary_data(report_state)
 	return columns, data, None, chart, summary
+
+
+def get_sales_forecast_export_rows(filters=None):
+	filters = frappe._dict(filters or {})
+	normalized_filters = normalize_filters(filters)
+	source = load_source_facts(normalized_filters)
+	masters = load_master_maps(source, normalized_filters)
+	report_state = build_report_state(source, masters, normalized_filters)
+	return build_tree_rows(report_state, normalized_filters, include_future_actuals=True)
 
 
 def normalize_filters(raw_filters):
@@ -654,6 +663,7 @@ def normalize_filters(raw_filters):
 		warehouse=(raw_filters.get("warehouse") or "").strip() or None,
 		uom=(raw_filters.get("uom") or "").strip() or None,
 		show_past_data=cint(raw_filters.get("show_past_data")),
+		show_actual=cint(raw_filters.get("show_actual")),
 		alpha=flt(raw_filters.get("alpha") or 0.3),
 		beta=flt(raw_filters.get("beta") or 0.1),
 		gamma=flt(raw_filters.get("gamma") or 0.1),
@@ -981,7 +991,7 @@ def build_report_state(source, masters, filters):
 	)
 
 
-def build_tree_rows(report_state, filters):
+def build_tree_rows(report_state, filters, include_future_actuals=False):
 	rows = []
 	group_children = getattr(report_state, "group_children", None) or defaultdict(list)
 	for group_value in sorted(report_state.group_buckets, key=lambda value: cstr(value or "").lower()):
@@ -994,6 +1004,7 @@ def build_tree_rows(report_state, filters):
 			bucket=group_bucket,
 			report_state=report_state,
 			filters=filters,
+			include_future_actuals=include_future_actuals,
 		)
 		rows.append(group_row)
 
@@ -1015,13 +1026,22 @@ def build_tree_rows(report_state, filters):
 					bucket=child,
 					report_state=report_state,
 					filters=filters,
+					include_future_actuals=include_future_actuals,
 				)
 			)
 
 	return rows
 
 
-def make_row(display_name, parent_display_name, row_type, bucket, report_state, filters):
+def make_row(
+	display_name,
+	parent_display_name,
+	row_type,
+	bucket,
+	report_state,
+	filters,
+	include_future_actuals=False,
+):
 	is_item_group = row_type == "group" and filters.group_by == "Item"
 	row = {
 		"display_name": display_name,
@@ -1071,6 +1091,21 @@ def make_row(display_name, parent_display_name, row_type, bucket, report_state, 
 			row["forecast_qty_total"] += forecast_qty
 			row["forecast_value_total"] += forecast_value
 
+			if include_future_actuals:
+				actual_qty = rounded_quantity(
+					convert_qty_to_display(
+						metrics.get("raw_actual_qty", 0.0),
+						bucket.get("stock_uom"),
+						filters.uom,
+						report_state.masters,
+					)
+				)
+				actual_value = rounded_value(metrics.get("actual_value", 0.0))
+				row[f"actual_qty_{suffix}"] = actual_qty
+				row[f"actual_value_{suffix}"] = actual_value
+				row["actual_qty_total"] += actual_qty
+				row["actual_value_total"] += actual_value
+
 		row["is_locked"] = max(row["is_locked"], cint(metrics.get("is_locked", 0)))
 
 	return row
@@ -1106,6 +1141,19 @@ def get_columns(report_state, filters):
 				}
 			)
 			continue
+
+		if filters.show_actual:
+			columns.append(
+				{"label": _(f"{period_label} Actual Qty"), "fieldname": f"actual_qty_{suffix}", "fieldtype": "Float", "width": 130}
+			)
+			columns.append(
+				{
+					"label": _(f"{period_label} Actual Amount"),
+					"fieldname": f"actual_value_{suffix}",
+					"fieldtype": "Currency",
+					"width": 140,
+				}
+			)
 
 		columns.append(
 			{

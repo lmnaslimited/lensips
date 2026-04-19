@@ -43,7 +43,7 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Sales Forecast": "public/js/sales_forecast.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -140,7 +140,10 @@ after_install = "lensips.planning.api.lumi_forecast_agent.setup_raven_lens_sales
 doc_events = {
 	"Item": {
 		"validate": "lensips.planning.setup.sync_item_planning_data",
-	}
+	},
+	"Sales Forecast": {
+		"validate": "lensips.planning.setup.sync_sales_forecast_demand",
+	},
 }
 
 # Scheduled Tasks

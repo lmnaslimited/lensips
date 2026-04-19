@@ -1,96 +1,132 @@
 from __future__ import annotations
 
+import re
+from bisect import bisect_left
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import date, timedelta
 
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, getdate, nowdate
-
-from lensips.planning.services.forecast_pricing_service import (
-	get_customer_default_price_list,
-	get_effective_item_price,
-)
+from frappe.utils import add_months, cint, cstr, flt, getdate, nowdate
 
 
-def create_sales_forecast(data, filters):
+PERIOD_FIELD_RE = re.compile(r"^(forecast|actual)_(qty|value)_(\d{4}_\d{2}_\d{2})$")
+
+
+@dataclass(frozen=True)
+class PeriodSpec:
+	period: date
+	suffix: str
+
+
+def create_sales_forecast(data, filters, columns=None):
 	parent_meta, child_meta, detail_meta, _child_doctype = get_forecast_meta()
 	clean_filters = normalize_filters(filters)
 	start_date = compute_forecast_start_date(clean_filters["to_date"], clean_filters["periodicity"])
 	frequency = get_frequency(clean_filters["periodicity"])
-	demand_number = cint(clean_filters["forecast_periods"])
-	clean_rows = clean_report_rows(data, start_date)
+	report_rows = normalize_report_rows(data)
 
-	if not clean_rows:
+	if not report_rows:
 		frappe.throw(_("No future forecast rows with positive forecast quantity were found to export."))
 
-	item_codes = sorted({row["item_code"] for row in clean_rows})
-	item_details = get_item_details(item_codes)
-	grouped_rows = group_forecast_rows(clean_rows)
-	parent_warehouse = resolve_parent_warehouse(clean_filters, grouped_rows)
-	forecast_doc = get_existing_forecast(start_date, clean_filters["company"], parent_warehouse)
-	existing_items = get_existing_item_map(forecast_doc) if forecast_doc else {}
-	detail_rows = build_detail_rows(data, clean_filters, detail_meta)
+	period_specs = extract_period_specs(columns, report_rows)
+	future_specs = future_period_specs(period_specs, start_date)
+	if not future_specs:
+		frappe.throw(_("No future forecast periods were found to export."))
 
-	if forecast_doc and forecast_doc.docstatus == 1:
-		frappe.throw(
-			_(
-				"Sales Forecast {0} is already submitted for company {1}, warehouse {2}, and start date {3}. "
-				"Please cancel/amend it or choose a different export window."
-			).format(frappe.bold(forecast_doc.name), clean_filters["company"], parent_warehouse, start_date)
-		)
-
-	selected_items = build_selected_items(item_codes, item_details, child_meta)
-	child_rows = build_child_rows(
-		grouped_rows=grouped_rows,
-		item_details=item_details,
-		existing_items=existing_items,
-		child_meta=child_meta,
-	)
-
-	if not child_rows:
-		frappe.throw(_("No exportable forecast rows remained after applying lock rules."))
-
-	if forecast_doc:
-		forecast_doc.set("selected_items", [])
-		forecast_doc.set("items", [])
-		if detail_meta:
-			forecast_doc.set("forecast_entries", [])
-	else:
-		forecast_doc = frappe.new_doc(parent_meta.name)
-
-	apply_parent_values(
-		doc=forecast_doc,
-		parent_meta=parent_meta,
+	warehouse_names = sorted({row.get("warehouse") for row in report_rows if row.get("warehouse")})
+	warehouse_map = load_warehouse_map(warehouse_names)
+	rows_by_parent_warehouse = group_rows_by_parent_warehouse(report_rows, warehouse_map)
+	existing_forecasts = load_existing_forecasts(
 		company=clean_filters["company"],
-		parent_warehouse=parent_warehouse,
 		start_date=start_date,
 		frequency=frequency,
-		demand_number=demand_number,
+		parent_warehouses=rows_by_parent_warehouse.keys(),
 	)
 
-	for row in selected_items:
-		forecast_doc.append("selected_items", row)
+	results = []
+	total_entries = 0
+	for parent_warehouse in sorted(rows_by_parent_warehouse):
+		rows = rows_by_parent_warehouse[parent_warehouse]
+		forecast_doc = existing_forecasts.get(parent_warehouse) or frappe.new_doc(parent_meta.name)
+		existing_items = get_existing_item_map(forecast_doc) if not forecast_doc.is_new() else {}
+		selected_items = build_selected_items(rows, child_meta)
+		item_rows, entry_rows = build_export_rows(
+			rows=rows,
+			future_specs=future_specs,
+			existing_items=existing_items,
+			child_meta=child_meta,
+			detail_meta=detail_meta,
+			company=clean_filters["company"],
+			periodicity=clean_filters["periodicity"],
+		)
 
-	for row in child_rows:
-		forecast_doc.append("items", row)
+		if not item_rows:
+			continue
 
-	if detail_meta:
-		for row in detail_rows:
-			forecast_doc.append("forecast_entries", row)
+		apply_parent_values(
+			doc=forecast_doc,
+			parent_meta=parent_meta,
+			company=clean_filters["company"],
+			parent_warehouse=parent_warehouse,
+			start_date=start_date,
+			frequency=frequency,
+			demand_number=cint(clean_filters["forecast_periods"]),
+		)
 
-	if forecast_doc.is_new():
-		forecast_doc.insert()
-		action = "created"
-	else:
-		forecast_doc.save()
-		action = "updated"
+		if forecast_doc.is_new():
+			forecast_doc.naming_series = make_naming_series(parent_warehouse, frequency, start_date)
+		else:
+			forecast_doc.set("selected_items", [])
+			forecast_doc.set("items", [])
+			if detail_meta:
+				forecast_doc.set("forecast_entries", [])
+
+		for row in selected_items:
+			forecast_doc.append("selected_items", row)
+
+		for row in item_rows:
+			forecast_doc.append("items", row)
+
+		if detail_meta:
+			for row in entry_rows:
+				forecast_doc.append("forecast_entries", row)
+			total_entries += len(entry_rows)
+
+		if forecast_doc.docstatus == 1:
+			forecast_doc.flags.ignore_validate_update_after_submit = True
+
+		if forecast_doc.is_new():
+			forecast_doc.insert()
+			action = "created"
+		else:
+			forecast_doc.save(ignore_version=True)
+			action = "updated"
+
+		results.append(
+			{
+				"forecast_name": forecast_doc.name,
+				"warehouse": parent_warehouse,
+				"total_items": len({row["item_code"] for row in item_rows}),
+				"message": _("Sales Forecast {0} successfully {1}.").format(forecast_doc.name, action),
+			}
+		)
+
+	if not results:
+		frappe.throw(_("No exportable forecast rows remained after applying warehouse grouping."))
 
 	return {
-		"forecast_name": forecast_doc.name,
-		"total_items": len({row["item_code"] for row in child_rows}),
-		"total_entries": len(detail_rows),
-		"message": _("Sales Forecast {0} successfully {1}.").format(forecast_doc.name, action),
+		"forecast_name": results[0]["forecast_name"] if len(results) == 1 else None,
+		"forecast_names": [row["forecast_name"] for row in results],
+		"results": results,
+		"total_items": sum(row["total_items"] for row in results),
+		"total_entries": total_entries,
+		"message": (
+			results[0]["message"]
+			if len(results) == 1
+			else _("Sales Forecasts successfully created/updated for {0} warehouses.").format(len(results))
+		),
 	}
 
 
@@ -102,283 +138,314 @@ def get_forecast_meta():
 
 	if not items_field or not items_field.options:
 		frappe.throw(_("Sales Forecast child table configuration is missing."))
-
 	if not selected_items_field or not selected_items_field.options:
 		frappe.throw(_("Sales Forecast selected_items configuration is missing."))
 
-	child_doctype = items_field.options
-	child_meta = frappe.get_meta(child_doctype)
+	child_meta = frappe.get_meta(items_field.options)
 	detail_meta = frappe.get_meta(detail_field.options) if detail_field and detail_field.options else None
-	return parent_meta, child_meta, detail_meta, child_doctype
+	return parent_meta, child_meta, detail_meta, items_field.options
 
 
 def normalize_filters(filters):
 	filters = frappe._dict(filters or {})
 	company = (filters.get("company") or "").strip()
+	group_by = (filters.get("group_by") or "Item").strip()
 	periodicity = (filters.get("periodicity") or "Monthly").strip()
 	to_date = getdate(filters.get("to_date"))
 	forecast_periods = cint(filters.get("forecast_periods"))
 
 	if not company:
 		frappe.throw(_("Company is required to export Sales Forecast."))
+	if group_by != "Item":
+		frappe.throw(_("Sales Forecast export only supports Group By = Item."))
 	if periodicity not in {"Weekly", "Monthly"}:
 		frappe.throw(_("Sales Forecast export supports only Weekly and Monthly periodicity."))
 	if not to_date:
 		frappe.throw(_("To Date is required to compute the Sales Forecast start date."))
 	if forecast_periods <= 0:
 		frappe.throw(_("Forecast Periods must be greater than zero."))
+	if forecast_periods > 18:
+		frappe.throw(_("Forecast Periods cannot be greater than 18."))
 
 	return frappe._dict(
 		company=company,
-		warehouse=(filters.get("warehouse") or "").strip(),
+		warehouse=(filters.get("warehouse") or "").strip() or None,
 		periodicity=periodicity,
 		to_date=to_date,
 		forecast_periods=forecast_periods,
+		group_by=group_by,
 	)
 
 
 def compute_forecast_start_date(to_date, periodicity):
-	period_start = normalize_to_period(to_date, periodicity)
-	return next_period(period_start, periodicity)
+	return next_period(normalize_to_period(to_date, periodicity), periodicity)
 
 
 def get_frequency(periodicity):
 	return "Weekly" if periodicity == "Weekly" else "Monthly"
 
 
-def clean_report_rows(rows, start_date):
-	clean_rows = []
+def normalize_report_rows(rows):
+	group_rows = []
+	item_rows = []
 	for row in rows or []:
 		row = frappe._dict(row or {})
-		item_code = (row.get("item_code") or "").strip()
-		forecast_qty = flt(row.get("forecast_qty"))
-		period = getdate(row.get("period"))
-
-		if not item_code or forecast_qty <= 0 or not period or period < start_date:
+		if row.get("row_type") not in {"group", "item"}:
 			continue
 
-		clean_rows.append(
-			frappe._dict(
-				item_code=item_code,
-				period=period,
-				forecast_qty=forecast_qty,
-				forecast_value=flt(row.get("forecast_value")),
-				warehouse=(row.get("warehouse") or "").strip(),
-				is_locked=cint(row.get("is_locked")),
-				customer=(row.get("customer") or "").strip() or None,
-				item_group=(row.get("item_group") or "").strip() or None,
-				sales_group=(row.get("sales_group") or "").strip() or None,
-				group_key=(row.get("group_key") or "").strip() or None,
-				item_name=(row.get("item_name") or "").strip() or None,
-				period_label=(row.get("period_label") or "").strip() or None,
-				price_list=(row.get("price_list") or "").strip() or None,
-				price_list_rate=flt(row.get("price_list_rate")),
-			)
+		item_code = cstr(row.get("item_code")).strip()
+		warehouse = cstr(row.get("warehouse")).strip()
+		if not item_code or not warehouse:
+			continue
+		if flt(row.get("forecast_qty_total")) <= 0:
+			continue
+
+		if row.get("row_type") == "group":
+			group_rows.append(row)
+		else:
+			item_rows.append(row)
+
+	return group_rows or item_rows
+
+
+def extract_period_specs(columns, rows):
+	suffixes = {}
+
+	for column in columns or []:
+		fieldname = (column or {}).get("fieldname") if isinstance(column, dict) else getattr(column, "fieldname", None)
+		if not fieldname:
+			continue
+		match = PERIOD_FIELD_RE.match(fieldname)
+		if not match or match.group(1) != "forecast":
+			continue
+		suffix = match.group(3)
+		period = parse_period_suffix(suffix)
+		if period:
+			suffixes[period] = suffix
+
+	if not suffixes and rows:
+		sample = rows[0]
+		for key in sample.keys():
+			match = PERIOD_FIELD_RE.match(key)
+			if not match or match.group(1) != "forecast":
+				continue
+			suffix = match.group(3)
+			period = parse_period_suffix(suffix)
+			if period:
+				suffixes[period] = suffix
+
+	return [PeriodSpec(period=period, suffix=suffix) for period, suffix in sorted(suffixes.items())]
+
+
+def future_period_specs(period_specs, start_date):
+	periods = [spec.period for spec in period_specs]
+	return period_specs[bisect_left(periods, start_date) :]
+
+
+def parse_period_suffix(suffix):
+	suffix = (suffix or "").strip()
+	if not suffix:
+		return None
+	try:
+		return getdate(suffix.replace("_", "-"))
+	except Exception:
+		return None
+
+
+def load_warehouse_map(warehouse_names):
+	warehouse_map = {}
+	pending = {name for name in warehouse_names if name}
+
+	while pending:
+		rows = frappe.get_all(
+			"Warehouse",
+			filters={"name": ("in", sorted(pending))},
+			fields=["name", "parent_warehouse", "is_group"],
+			limit_page_length=0,
 		)
+		pending = set()
+		for row in rows:
+			warehouse_map[row.name] = row
+			parent_warehouse = (row.parent_warehouse or "").strip()
+			if parent_warehouse and parent_warehouse not in warehouse_map:
+				pending.add(parent_warehouse)
 
-	return clean_rows
+	return warehouse_map
 
 
-def group_forecast_rows(rows):
-	grouped = defaultdict(lambda: {"forecast_qty": 0.0, "forecast_value": 0.0, "is_locked": 0})
+def group_rows_by_parent_warehouse(rows, warehouse_map):
+	grouped = defaultdict(list)
 	for row in rows or []:
-		row = frappe._dict(row or {})
-		key = (row.item_code, row.period, row.warehouse)
-		grouped[key]["forecast_qty"] += flt(row.forecast_qty)
-		grouped[key]["forecast_value"] += flt(row.forecast_value)
-		grouped[key]["is_locked"] = max(grouped[key]["is_locked"], cint(row.is_locked))
-
+		warehouse = (row.get("warehouse") or "").strip()
+		parent_warehouse = resolve_parent_warehouse(warehouse, warehouse_map)
+		grouped[parent_warehouse].append(row)
 	return grouped
 
 
-def get_item_details(item_codes):
-	if not item_codes:
+def resolve_parent_warehouse(warehouse, warehouse_map):
+	warehouse = (warehouse or "").strip()
+	if not warehouse:
+		return None
+
+	wh = warehouse_map.get(warehouse)
+	if not wh:
+		return warehouse
+
+	if cint(getattr(wh, "is_group", 0)):
+		return wh.name
+
+	return (wh.parent_warehouse or wh.name).strip()
+
+
+def load_existing_forecasts(company, start_date, frequency, parent_warehouses):
+	if not parent_warehouses:
 		return {}
 
-	items = frappe.get_all(
-		"Item",
-		filters={"name": ("in", item_codes)},
-		fields=["name", "item_name", "stock_uom", "sales_uom"],
-		limit_page_length=len(item_codes),
-	)
-
-	item_details = {}
-	for item in items:
-		item_details[item.name] = {
-			"item_name": item.item_name,
-			"uom": item.sales_uom or item.stock_uom,
-		}
-
-	missing_items = sorted(set(item_codes) - set(item_details))
-	if missing_items:
-		frappe.throw(_("These items do not exist in ERPNext: {0}").format(", ".join(missing_items)))
-
-	return item_details
-
-
-def resolve_parent_warehouse(filters, grouped_rows):
-	if filters.warehouse:
-		return filters.warehouse
-
-	warehouses = sorted({warehouse for _, _, warehouse in grouped_rows if warehouse})
-	if len(warehouses) == 1:
-		return warehouses[0]
-
-	frappe.throw(
-		_(
-			"Warehouse is required for Sales Forecast export. Please select a warehouse filter in the report."
-		)
-	)
-
-
-def get_existing_forecast(start_date, company, parent_warehouse):
-	existing_name = frappe.db.get_value(
+	forecast_rows = frappe.get_all(
 		"Sales Forecast",
-		{
-			"from_date": start_date,
+		filters={
 			"company": company,
-			"parent_warehouse": parent_warehouse,
+			"from_date": start_date,
+			"frequency": frequency,
+			"parent_warehouse": ("in", sorted(parent_warehouses)),
 			"docstatus": ("!=", 2),
 		},
-		"name",
+		fields=["name", "parent_warehouse"],
 		order_by="modified desc",
+		limit_page_length=0,
 	)
-	return frappe.get_doc("Sales Forecast", existing_name) if existing_name else None
+
+	forecast_map = {}
+	for row in forecast_rows:
+		if row.parent_warehouse not in forecast_map:
+			forecast_map[row.parent_warehouse] = frappe.get_doc("Sales Forecast", row.name)
+
+	return forecast_map
 
 
 def get_existing_item_map(forecast_doc):
 	item_map = {}
 	for row in forecast_doc.get("items") or []:
-		key = (row.item_code, getdate(row.delivery_date), row.warehouse or "")
+		key = (cstr(row.item_code), getdate(row.delivery_date), cstr(row.warehouse or ""))
 		item_map[key] = row
 	return item_map
 
 
-def build_selected_items(item_codes, item_details, child_meta):
-	selected_items = []
+def build_selected_items(rows, child_meta):
 	required_defaults = get_required_child_defaults(child_meta)
+	selected = []
+	seen = set()
 
-	for item_code in item_codes:
-		item = item_details[item_code]
-		row = dict(required_defaults)
-		row.update(
+	for row in rows or []:
+		item_code = cstr(row.get("item_code")).strip()
+		if not item_code or item_code in seen:
+			continue
+		seen.add(item_code)
+		payload = dict(required_defaults)
+		payload.update(
 			{
 				"item_code": item_code,
-				"item_name": item.get("item_name"),
-				"uom": item.get("uom"),
+				"item_name": row.get("item_name"),
+				"uom": row.get("uom"),
 			}
 		)
-		selected_items.append(row)
+		selected.append(payload)
 
-	return selected_items
+	return selected
 
 
-def build_detail_rows(rows, filters, detail_meta):
-	if not detail_meta:
-		return []
+def build_export_rows(rows, future_specs, existing_items, child_meta, detail_meta, company, periodicity):
+	item_rows = []
+	entry_rows = []
 
-	detail_rows = []
 	for row in rows or []:
-		row = frappe._dict(row or {})
-		period = getdate(row.get("period"))
-		if not period:
-			continue
+		item_code = cstr(row.get("item_code")).strip()
+		warehouse = cstr(row.get("warehouse")).strip()
+		customer = (row.get("customer") or "").strip() or None
+		price_list_rate = rounded_value(row.get("price_list_rate") or 0)
 
-		detail_rows.append(
-			sanitize_child_row(
+		for spec in future_specs:
+			forecast_qty = rounded_quantity(row.get(f"forecast_qty_{spec.suffix}") or 0)
+			if forecast_qty <= 0:
+				continue
+
+			actual_qty = rounded_quantity(row.get(f"actual_qty_{spec.suffix}") or 0)
+			actual_value = rounded_value(row.get(f"actual_value_{spec.suffix}") or 0)
+			forecast_value = rounded_value(row.get(f"forecast_value_{spec.suffix}") or 0)
+			key = (item_code, spec.period, warehouse)
+			existing_row = existing_items.get(key)
+			adjust_qty = flt(getattr(existing_row, "adjust_qty", 0)) if existing_row else 0
+			adjust_value = rounded_value((actual_value / actual_qty) * adjust_qty) if actual_qty else 0
+
+			if existing_row and cint(getattr(existing_row, "locked", 0)):
+				locked_row = sanitize_child_row(existing_row, child_meta)
+				locked_row.update(
+					{
+						"actual_qty": actual_qty,
+						"actual_value": actual_value,
+						"forecast_qty": forecast_qty,
+						"forecast_value": forecast_value,
+						"price_list_rate": price_list_rate,
+						"warehouse": warehouse or None,
+						"locked": 1,
+					}
+				)
+				item_rows.append(locked_row)
+				if detail_meta:
+					entry_rows.append(
+						{
+							"company": company,
+							"customer": customer,
+							"item_code": item_code,
+							"warehouse": warehouse or None,
+							"period": spec.period,
+							"forecast_qty": forecast_qty,
+							"forecast_value": forecast_value,
+							"price_list": row.get("price_list"),
+							"actual_qty": actual_qty,
+							"actual_value": actual_value,
+						}
+					)
+				continue
+
+			adjust_qty = flt(getattr(existing_row, "adjust_qty", 0)) if existing_row else 0
+			locked = cint(getattr(existing_row, "locked", row.get("is_locked", 0)))
+			item_rows.append(
 				{
-					"company": filters["company"],
-					"customer": row.get("customer"),
-					"sales_group": row.get("sales_group"),
-					"group_key": row.get("group_key"),
-					"item_code": row.get("item_code"),
+					"item_code": item_code,
 					"item_name": row.get("item_name"),
-					"item_group": row.get("item_group"),
-					"warehouse": row.get("warehouse"),
-					"period": period,
-					"period_label": row.get("period_label"),
-					"actual_qty": flt(row.get("actual_qty")),
-					"actual_value": flt(row.get("actual_value")),
-					"forecast_qty": flt(row.get("forecast_qty")),
-					"forecast_value": flt(row.get("forecast_value")),
-					"adjust_qty": flt(row.get("adjust_qty")),
-					"adjust_value": flt(row.get("adjust_value")),
-					"demand_qty": flt(row.get("demand_qty")),
-					"demand_value": flt(row.get("demand_value")),
-					"price_list": row.get("price_list"),
-					"price_list_rate": flt(row.get("price_list_rate")),
-					"is_locked": cint(row.get("is_locked")),
-				},
-				detail_meta,
-			)
-		)
-
-	return detail_rows
-
-
-def build_child_rows(grouped_rows, item_details, existing_items, child_meta):
-	child_rows = []
-	has_adjust_qty = bool(child_meta.get_field("adjust_qty"))
-	has_demand_qty = bool(child_meta.get_field("demand_qty"))
-
-	for key in sorted(grouped_rows, key=lambda x: (x[1], x[0], x[2] or "")):
-		item_code, delivery_date, warehouse = key
-		row_data = grouped_rows[key]
-		existing_row = existing_items.get(key)
-		customer = row_data.get("customer")
-		item_price = get_effective_item_price(
-			item_code=item_code,
-			customer=customer,
-			price_list=get_customer_default_price_list(customer),
-			period_start=delivery_date,
-			period_end=delivery_date,
-			uom=item_details[item_code].get("uom"),
-		)
-		price_rate = flt(item_price.price_list_rate)
-		forecast_qty = rounded_quantity(row_data["forecast_qty"])
-		forecast_value = rounded_value(forecast_qty * price_rate)
-		adjust_qty = flt(getattr(existing_row, "adjust_qty", 0)) if existing_row else 0
-		adjust_value = rounded_value(adjust_qty * price_rate)
-		demand_qty = rounded_quantity(forecast_qty + adjust_qty)
-		demand_value = rounded_value(demand_qty * price_rate)
-
-		if row_data["is_locked"] and existing_row:
-			saved_row = sanitize_child_row(existing_row, child_meta)
-			saved_row.update(
-				{
+					"uom": row.get("uom"),
+					"delivery_date": spec.period,
+					"forecast_qty": forecast_qty,
 					"forecast_value": forecast_value,
+					"actual_qty": actual_qty,
+					"actual_value": actual_value,
+					"adjust_qty": adjust_qty,
+					"price_list_rate": price_list_rate,
 					"adjust_value": adjust_value,
-					"demand_value": demand_value,
+					"demand_qty": rounded_quantity(actual_qty + adjust_qty),
+					"demand_value": rounded_value(actual_value + adjust_value),
+					"warehouse": warehouse or None,
+					"locked": locked,
 				}
 			)
-			child_rows.append(saved_row)
-			continue
+			if detail_meta:
+				entry_rows.append(
+					{
+						"company": company,
+						"customer": customer,
+						"item_code": item_code,
+						"warehouse": warehouse or None,
+						"period": spec.period,
+						"forecast_qty": forecast_qty,
+						"forecast_value": forecast_value,
+						"price_list": row.get("price_list"),
+						"actual_qty": actual_qty,
+						"actual_value": actual_value,
+					}
+				)
 
-		if row_data["is_locked"] and not existing_row:
-			continue
-
-		item = item_details[item_code]
-		child_row = {
-			"item_code": item_code,
-			"item_name": item.get("item_name"),
-			"uom": item.get("uom"),
-			"delivery_date": delivery_date,
-			"forecast_qty": forecast_qty,
-			"forecast_value": forecast_value,
-			"warehouse": warehouse or None,
-		}
-
-		if has_adjust_qty:
-			child_row["adjust_qty"] = adjust_qty
-			child_row["adjust_value"] = adjust_value
-
-		if has_demand_qty:
-			child_row["demand_qty"] = demand_qty
-			child_row["demand_value"] = demand_value
-
-		child_rows.append(child_row)
-
-	return child_rows
+	return item_rows, entry_rows
 
 
 def apply_parent_values(doc, parent_meta, company, parent_warehouse, start_date, frequency, demand_number):
@@ -397,13 +464,13 @@ def set_if_present(doc, meta, fieldname, value):
 		doc.set(fieldname, value)
 
 
+def make_naming_series(parent_warehouse, frequency, start_date):
+	return f"SF.YY.-.{parent_warehouse}.-.{frequency}.-.{start_date.isoformat()}.-.##"
+
+
 def sanitize_child_row(row, child_meta):
-	allowed_fields = {
-		field.fieldname
-		for field in child_meta.fields
-		if getattr(field, "fieldname", None)
-	}
-	allowed_fields.update({"doctype"})
+	allowed_fields = {field.fieldname for field in child_meta.fields if getattr(field, "fieldname", None)}
+	allowed_fields.update({"name", "doctype", "idx", "parent", "parentfield", "parenttype"})
 
 	row_dict = row.as_dict(no_nulls=False) if hasattr(row, "as_dict") else dict(row)
 	return {key: value for key, value in row_dict.items() if key in allowed_fields}
@@ -422,7 +489,6 @@ def get_required_child_defaults(child_meta):
 			defaults[fieldname] = 0
 		elif field.fieldtype == "Check":
 			defaults[fieldname] = 0
-
 	return defaults
 
 
@@ -450,356 +516,3 @@ def rounded_quantity(value):
 
 def rounded_value(value):
 	return round(flt(value), 2)
-
-
-# New export implementation overrides the legacy single-document flow above.
-
-
-def create_sales_forecast(data, filters):
-	parent_meta, child_meta, detail_meta, _child_doctype = get_forecast_meta()
-	clean_filters = normalize_filters(filters)
-	start_date = compute_forecast_start_date(clean_filters["to_date"], clean_filters["periodicity"])
-	frequency = get_frequency(clean_filters["periodicity"])
-	demand_number = cint(clean_filters["forecast_periods"])
-	clean_rows = clean_report_rows(data, start_date)
-
-	if not clean_rows:
-		frappe.throw(_("No future forecast rows with positive forecast quantity were found to export."))
-
-	results = []
-	rows_by_warehouse = group_rows_by_warehouse(clean_rows)
-
-	for warehouse, warehouse_rows in rows_by_warehouse.items():
-		item_codes = sorted({row["item_code"] for row in warehouse_rows})
-		item_details = get_item_details(item_codes)
-		grouped_rows = group_forecast_rows(warehouse_rows)
-		parent_warehouse = resolve_parent_warehouse(clean_filters, warehouse, grouped_rows)
-		forecast_doc = get_existing_forecast(start_date, clean_filters["company"], parent_warehouse)
-		existing_items = get_existing_item_map(forecast_doc) if forecast_doc else {}
-
-		if forecast_doc and forecast_doc.docstatus == 1:
-			frappe.throw(
-				_(
-					"Sales Forecast {0} is already submitted for company {1}, warehouse {2}, and start date {3}. "
-					"Please cancel/amend it or choose a different export window."
-				).format(
-					frappe.bold(forecast_doc.name),
-					clean_filters["company"],
-					parent_warehouse,
-					start_date,
-				)
-			)
-
-		selected_items = build_selected_items(item_codes, item_details, child_meta)
-		child_rows = build_child_rows(
-			grouped_rows=grouped_rows,
-			item_details=item_details,
-			existing_items=existing_items,
-			child_meta=child_meta,
-		)
-
-		if not child_rows:
-			continue
-
-		if forecast_doc:
-			forecast_doc.set("selected_items", [])
-			forecast_doc.set("items", [])
-			if detail_meta:
-				forecast_doc.set("forecast_entries", [])
-		else:
-			forecast_doc = frappe.new_doc(parent_meta.name)
-
-		apply_parent_values(
-			doc=forecast_doc,
-			parent_meta=parent_meta,
-			company=clean_filters["company"],
-			parent_warehouse=parent_warehouse,
-			start_date=start_date,
-			frequency=frequency,
-			demand_number=demand_number,
-		)
-
-		for row in selected_items:
-			forecast_doc.append("selected_items", row)
-
-		for row in child_rows:
-			forecast_doc.append("items", row)
-
-		if forecast_doc.is_new():
-			forecast_doc.insert()
-			action = "created"
-		else:
-			forecast_doc.save()
-			action = "updated"
-
-		results.append(
-			{
-				"forecast_name": forecast_doc.name,
-				"warehouse": parent_warehouse,
-				"total_items": len({row["item_code"] for row in child_rows}),
-				"message": _("Sales Forecast {0} successfully {1}.").format(forecast_doc.name, action),
-			}
-		)
-
-	if not results:
-		frappe.throw(_("No exportable forecast rows remained after applying warehouse grouping."))
-
-	return {
-		"forecast_name": results[0]["forecast_name"] if len(results) == 1 else None,
-		"forecast_names": [row["forecast_name"] for row in results],
-		"results": results,
-		"total_items": sum(row["total_items"] for row in results),
-		"total_entries": 0,
-		"message": (
-			results[0]["message"]
-			if len(results) == 1
-			else _("Sales Forecasts successfully created/updated for {0} warehouses.").format(len(results))
-		),
-	}
-
-
-def normalize_filters(filters):
-	filters = frappe._dict(filters or {})
-	company = (filters.get("company") or "").strip()
-	periodicity = (filters.get("periodicity") or "Monthly").strip()
-	to_date = getdate(filters.get("to_date"))
-	forecast_periods = cint(filters.get("forecast_periods"))
-
-	if not company:
-		frappe.throw(_("Company is required to export Sales Forecast."))
-	if periodicity not in {"Weekly", "Monthly"}:
-		frappe.throw(_("Sales Forecast export supports only Weekly and Monthly periodicity."))
-	if not to_date:
-		frappe.throw(_("To Date is required to compute the Sales Forecast start date."))
-	if forecast_periods <= 0:
-		frappe.throw(_("Forecast Periods must be greater than zero."))
-
-	return frappe._dict(
-		company=company,
-		warehouse=(filters.get("warehouse") or "").strip() or None,
-		periodicity=periodicity,
-		to_date=to_date,
-		forecast_periods=forecast_periods,
-	)
-
-
-def group_rows_by_warehouse(rows):
-	grouped = defaultdict(list)
-	for row in rows or []:
-		warehouse = row.get("warehouse") or ""
-		grouped[warehouse].append(row)
-	return grouped
-
-
-def clean_report_rows(rows, start_date):
-	clean_rows = []
-	for row in rows or []:
-		row = frappe._dict(row or {})
-		if row.get("row_type") and row.get("row_type") != "item":
-			continue
-
-		item_code = (row.get("item_code") or "").strip()
-		warehouse = (row.get("warehouse") or "").strip()
-		customer = (row.get("customer") or "").strip() or None
-		is_locked = cint(row.get("is_locked"))
-
-		period_fields = [key for key in row.keys() if key.startswith("forecast_qty_raw_")]
-		if not period_fields:
-			period_fields = [key for key in row.keys() if key.startswith("forecast_qty_")]
-
-		for qty_field in period_fields:
-			suffix = qty_field.split("forecast_qty_", 1)[1]
-			period = parse_period_suffix(suffix)
-			forecast_qty = flt(row.get(qty_field))
-			if not item_code or forecast_qty <= 0 or not period or period < start_date:
-				continue
-
-			clean_rows.append(
-				frappe._dict(
-					item_code=item_code,
-					period=period,
-					forecast_qty=forecast_qty,
-					forecast_value=flt(row.get(f"forecast_value_{suffix}")),
-					warehouse=warehouse,
-					is_locked=is_locked,
-					customer=customer,
-					item_group=(row.get("item_group") or "").strip() or None,
-					group_key=(row.get("group_value") or "").strip() or None,
-					item_name=(row.get("item_name") or "").strip() or None,
-					period_label=(row.get("period_label") or "").strip() or None,
-					price_list=(row.get("price_list") or "").strip() or None,
-					price_list_rate=flt(row.get("price_list_rate")),
-				)
-			)
-
-	return clean_rows
-
-
-def parse_period_suffix(suffix):
-	suffix = (suffix or "").strip()
-	if not suffix:
-		return None
-	try:
-		return getdate(suffix.replace("_", "-"))
-	except Exception:
-		return None
-
-
-def group_forecast_rows(rows):
-	grouped = defaultdict(lambda: {"forecast_qty": 0.0, "forecast_value": 0.0, "is_locked": 0})
-	for row in rows or []:
-		row = frappe._dict(row or {})
-		key = (row.item_code, row.period, row.warehouse)
-		grouped[key]["forecast_qty"] += flt(row.forecast_qty)
-		grouped[key]["forecast_value"] += flt(row.forecast_value)
-		grouped[key]["is_locked"] = max(grouped[key]["is_locked"], cint(row.is_locked))
-	return grouped
-
-
-def get_item_details(item_codes):
-	if not item_codes:
-		return {}
-
-	items = frappe.get_all(
-		"Item",
-		filters={"name": ("in", item_codes)},
-		fields=["name", "item_name", "stock_uom", "sales_uom"],
-		limit_page_length=0,
-	)
-
-	item_details = {}
-	for item in items:
-		item_details[item.name] = {
-			"item_name": item.item_name,
-			"uom": item.sales_uom or item.stock_uom,
-		}
-
-	missing_items = sorted(set(item_codes) - set(item_details))
-	if missing_items:
-		frappe.throw(_("These items do not exist in ERPNext: {0}").format(", ".join(missing_items)))
-
-	return item_details
-
-
-def resolve_parent_warehouse(filters, warehouse, grouped_rows):
-	if warehouse:
-		return warehouse
-	if filters.warehouse:
-		return filters.warehouse
-
-	warehouses = sorted({wh for _, _, wh in grouped_rows if wh})
-	if len(warehouses) == 1:
-		return warehouses[0]
-
-	frappe.throw(
-		_(
-			"Warehouse is required for Sales Forecast export. Please select a warehouse filter in the report."
-		)
-	)
-
-
-def get_existing_forecast(start_date, company, parent_warehouse):
-	existing_name = frappe.db.get_value(
-		"Sales Forecast",
-		{
-			"from_date": start_date,
-			"company": company,
-			"parent_warehouse": parent_warehouse,
-			"docstatus": ("!=", 2),
-		},
-		"name",
-		order_by="modified desc",
-	)
-	return frappe.get_doc("Sales Forecast", existing_name) if existing_name else None
-
-
-def get_existing_item_map(forecast_doc):
-	item_map = {}
-	for row in forecast_doc.get("items") or []:
-		key = (row.item_code, getdate(row.delivery_date), row.warehouse or "")
-		item_map[key] = row
-	return item_map
-
-
-def build_selected_items(item_codes, item_details, child_meta):
-	selected_items = []
-	required_defaults = get_required_child_defaults(child_meta)
-	for item_code in item_codes:
-		item = item_details[item_code]
-		row = dict(required_defaults)
-		row.update({"item_code": item_code, "item_name": item.get("item_name"), "uom": item.get("uom")})
-		selected_items.append(row)
-	return selected_items
-
-
-def build_detail_rows(rows, filters, detail_meta):
-	return []
-
-
-def build_child_rows(grouped_rows, item_details, existing_items, child_meta):
-	child_rows = []
-	has_adjust_qty = bool(child_meta.get_field("adjust_qty"))
-	has_demand_qty = bool(child_meta.get_field("demand_qty"))
-
-	for key in sorted(grouped_rows, key=lambda x: (x[1], x[0], x[2] or "")):
-		item_code, delivery_date, warehouse = key
-		row_data = grouped_rows[key]
-		existing_row = existing_items.get(key)
-		customer = row_data.get("customer")
-		item_price = get_effective_item_price(
-			item_code=item_code,
-			customer=customer,
-			price_list=get_customer_default_price_list(customer),
-			period_start=delivery_date,
-			period_end=delivery_date,
-			uom=item_details[item_code].get("uom"),
-		)
-		price_rate = flt(item_price.price_list_rate)
-		forecast_qty = rounded_quantity(row_data["forecast_qty"])
-		forecast_value = rounded_value(forecast_qty * price_rate)
-		adjust_qty = flt(getattr(existing_row, "adjust_qty", 0)) if existing_row else 0
-		adjust_value = rounded_value(adjust_qty * price_rate)
-		demand_qty = rounded_quantity(forecast_qty + adjust_qty)
-		demand_value = rounded_value(demand_qty * price_rate)
-
-		if row_data["is_locked"] and existing_row:
-			saved_row = sanitize_child_row(existing_row, child_meta)
-			saved_row.update(
-				{"forecast_value": forecast_value, "adjust_value": adjust_value, "demand_value": demand_value}
-			)
-			child_rows.append(saved_row)
-			continue
-
-		if row_data["is_locked"] and not existing_row:
-			continue
-
-		item = item_details[item_code]
-		child_row = {
-			"item_code": item_code,
-			"item_name": item.get("item_name"),
-			"uom": item.get("uom"),
-			"delivery_date": delivery_date,
-			"forecast_qty": forecast_qty,
-			"forecast_value": forecast_value,
-			"warehouse": warehouse or None,
-		}
-		if has_adjust_qty:
-			child_row["adjust_qty"] = adjust_qty
-			child_row["adjust_value"] = adjust_value
-		if has_demand_qty:
-			child_row["demand_qty"] = demand_qty
-			child_row["demand_value"] = demand_value
-		child_rows.append(child_row)
-
-	return child_rows
-
-
-def apply_parent_values(doc, parent_meta, company, parent_warehouse, start_date, frequency, demand_number):
-	set_if_present(doc, parent_meta, "company", company)
-	set_if_present(doc, parent_meta, "parent_warehouse", parent_warehouse)
-	set_if_present(doc, parent_meta, "posting_date", nowdate())
-	set_if_present(doc, parent_meta, "from_date", start_date)
-	set_if_present(doc, parent_meta, "frequency", frequency)
-	set_if_present(doc, parent_meta, "demand_number", demand_number)
-	if parent_meta.get_field("status"):
-		doc.status = "Planned"
