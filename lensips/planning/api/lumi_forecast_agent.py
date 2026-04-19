@@ -74,7 +74,9 @@ def get_lens_sales_forecast(
 	requested_period = _normalize_requested_period(period, normalized_filters.periodicity)
 	if requested_period:
 		filtered_rows = [
-			row for row in filtered_rows if getdate(row.get("period")) == requested_period
+			row
+			for row in filtered_rows
+			if row and getdate((row or {}).get("period")) == requested_period
 		]
 	limit = max(cint(limit), 1)
 	base_history_end = forecast_report.normalize_to_period(
@@ -85,9 +87,11 @@ def get_lens_sales_forecast(
 	group_totals = _build_group_totals(filtered_rows)
 
 	historical_rows = [
-		row for row in filtered_rows if getdate(row.get("period")) <= base_history_end
+		row for row in filtered_rows if row and getdate((row or {}).get("period")) <= base_history_end
 	]
-	forecast_rows = [row for row in filtered_rows if getdate(row.get("period")) > base_history_end]
+	forecast_rows = [
+		row for row in filtered_rows if row and getdate((row or {}).get("period")) > base_history_end
+	]
 
 	response = {
 		"report_name": REPORT_NAME,
@@ -739,6 +743,545 @@ def _get_export_function_params():
 		"additionalProperties": False,
 		"required": ["company", "to_date", "periodicity", "forecast_periods"],
 		"properties": properties,
+	}
+
+
+# New wrapper implementation for the pivoted tree report.
+
+
+@frappe.whitelist()
+def get_lens_sales_forecast(
+	company=None,
+	from_date=None,
+	to_date=None,
+	based_on_document="Sales Order",
+	forecast_based_on="Delivery Date",
+	warehouse=None,
+	group_by="Item",
+	periodicity="Monthly",
+	alpha=0.3,
+	beta=0.1,
+	gamma=0.1,
+	season_length=None,
+	forecast_periods=None,
+	manufacture_date=None,
+	item_code=None,
+	item_group=None,
+	customer=None,
+	territory=None,
+	product_segment=None,
+	sales_category=None,
+	uom=None,
+	show_past_data=0,
+	show_actual_variance=0,
+	period=None,
+	limit=20,
+	include_rows=0,
+	sales_group=None,
+):
+	columns, data, _chart, normalized_filters = _run_report(
+		company=company,
+		from_date=from_date,
+		to_date=to_date,
+		based_on_document=based_on_document,
+		forecast_based_on=forecast_based_on,
+		warehouse=warehouse,
+		group_by=group_by,
+		periodicity=periodicity,
+		alpha=alpha,
+		beta=beta,
+		gamma=gamma,
+		season_length=season_length,
+		forecast_periods=forecast_periods,
+		manufacture_date=manufacture_date,
+		item_code=item_code,
+		item_group=item_group,
+		customer=customer,
+		territory=territory,
+		product_segment=product_segment,
+		sales_category=sales_category,
+		uom=uom,
+		show_past_data=show_past_data,
+		show_actual_variance=show_actual_variance,
+	)
+
+	filtered_rows = _filter_rows(
+		data,
+		item_code=item_code,
+		item_group=item_group,
+		customer=customer,
+		territory=territory,
+		product_segment=product_segment,
+		sales_category=sales_category,
+		warehouse=warehouse,
+	)
+
+	requested_period = _normalize_requested_period(period, normalized_filters.periodicity)
+	period_totals = _build_period_totals(filtered_rows, columns, normalized_filters)
+	group_totals = _build_group_totals(filtered_rows)
+	base_history_end = forecast_report.normalize_to_period(
+		normalized_filters.to_date, normalized_filters.periodicity
+	)
+
+	historical_rows = [row for row in filtered_rows if flt(row.get("actual_qty_total")) or flt(row.get("actual_value_total"))]
+	forecast_rows = [row for row in filtered_rows if flt(row.get("forecast_qty_total")) or flt(row.get("forecast_value_total"))]
+
+	response = {
+		"report_name": REPORT_NAME,
+		"applied_filters": _serialize_filters(normalized_filters),
+		"focus_filters": {
+			"item_code": item_code,
+			"item_group": item_group,
+			"customer": customer,
+			"territory": territory,
+			"product_segment": product_segment,
+			"sales_category": sales_category,
+			"uom": uom,
+			"period": requested_period.isoformat() if requested_period else None,
+		},
+		"summary": {
+			"matching_rows": len(filtered_rows),
+			"historical_rows": len(historical_rows),
+			"forecast_rows": len(forecast_rows),
+			"historical_actual_qty": forecast_report.rounded_quantity(
+				sum(bucket["actual_qty"] for bucket in period_totals if bucket["period"] <= base_history_end)
+			),
+			"historical_actual_value": forecast_report.rounded_value(
+				sum(bucket["actual_value"] for bucket in period_totals if bucket["period"] <= base_history_end)
+			),
+			"forecast_qty": forecast_report.rounded_quantity(
+				sum(bucket["forecast_qty"] for bucket in period_totals if bucket["period"] > base_history_end)
+			),
+			"forecast_value": forecast_report.rounded_value(
+				sum(bucket["forecast_value"] for bucket in period_totals if bucket["period"] > base_history_end)
+			),
+			"forecast_variance_qty": forecast_report.rounded_quantity(
+				sum(bucket["variance_qty"] for bucket in period_totals if bucket["period"] > base_history_end)
+			),
+			"forecast_variance_value": forecast_report.rounded_value(
+				sum(bucket["variance_value"] for bucket in period_totals if bucket["period"] > base_history_end)
+			),
+			"locked_forecast_rows": sum(cint(row.get("is_locked")) for row in forecast_rows),
+		},
+		"top_groups": group_totals[:limit],
+		"period_totals": period_totals[:limit],
+		"columns": columns,
+		"chart": _chart,
+	}
+
+	if requested_period:
+		response["requested_period_summary"] = (
+			next((bucket for bucket in period_totals if bucket["period"] == requested_period), None)
+			or {
+				"period": requested_period.isoformat(),
+				"period_label": forecast_report.get_period_label(
+					requested_period, normalized_filters.periodicity
+				),
+				"actual_qty": 0,
+				"actual_value": 0,
+				"forecast_qty": 0,
+				"forecast_value": 0,
+				"variance_qty": 0,
+				"variance_value": 0,
+			}
+		)
+
+	if cint(include_rows):
+		response["rows"] = filtered_rows[:limit]
+
+	return response
+
+
+@frappe.whitelist()
+def export_lens_sales_forecast_to_sales_forecast(
+	company="LCS",
+	from_date=None,
+	to_date=None,
+	based_on_document="Sales Order",
+	forecast_based_on="Delivery Date",
+	warehouse=None,
+	group_by="Item",
+	periodicity="Monthly",
+	alpha=0.3,
+	beta=0.1,
+	gamma=0.1,
+	season_length=12,
+	forecast_periods=12,
+	manufacture_date=None,
+	item_code=None,
+	item_group=None,
+	customer=None,
+	territory=None,
+	product_segment=None,
+	sales_category=None,
+	uom=None,
+	show_past_data=0,
+	show_actual_variance=0,
+	submit_document=0,
+	sales_group=None,
+):
+	_columns, data, _chart, normalized_filters = _run_report(
+		company=company,
+		from_date=from_date,
+		to_date=to_date,
+		based_on_document=based_on_document,
+		forecast_based_on=forecast_based_on,
+		warehouse=warehouse,
+		group_by=group_by,
+		periodicity=periodicity,
+		alpha=alpha,
+		beta=beta,
+		gamma=gamma,
+		season_length=season_length,
+		forecast_periods=forecast_periods,
+		manufacture_date=manufacture_date,
+		item_code=item_code,
+		item_group=item_group,
+		customer=customer,
+		territory=territory,
+		product_segment=product_segment,
+		sales_category=sales_category,
+		uom=uom,
+		show_past_data=show_past_data,
+		show_actual_variance=show_actual_variance,
+	)
+
+	filtered_rows = _filter_rows(
+		data,
+		item_code=item_code,
+		item_group=item_group,
+		customer=customer,
+		territory=territory,
+		product_segment=product_segment,
+		sales_category=sales_category,
+		warehouse=warehouse,
+	)
+	result = create_sales_forecast(data=filtered_rows, filters=_serialize_filters(normalized_filters))
+
+	if cint(submit_document):
+		for forecast_name in result.get("forecast_names") or ([result.get("forecast_name")] if result.get("forecast_name") else []):
+			doc = frappe.get_doc("Sales Forecast", forecast_name)
+			if doc.docstatus == 0:
+				doc.submit()
+		result["message"] = _("Sales Forecast(s) successfully created and submitted.")
+		result["submitted"] = 1
+	else:
+		result["submitted"] = 0
+
+	result["exported_rows"] = len(filtered_rows)
+	result["filters"] = _serialize_filters(normalized_filters)
+	return result
+
+
+def _run_report(**kwargs):
+	filters = {
+		"company": kwargs.get("company"),
+		"from_date": kwargs.get("from_date") or add_months(today(), -36),
+		"to_date": kwargs.get("to_date") or today(),
+		"based_on_document": kwargs.get("based_on_document") or "Sales Order",
+		"forecast_based_on": kwargs.get("forecast_based_on") or "Delivery Date",
+		"warehouse": kwargs.get("warehouse"),
+		"group_by": kwargs.get("group_by") or "Item",
+		"periodicity": kwargs.get("periodicity") or "Monthly",
+		"alpha": kwargs.get("alpha") if kwargs.get("alpha") is not None else 0.3,
+		"beta": kwargs.get("beta") if kwargs.get("beta") is not None else 0.1,
+		"gamma": kwargs.get("gamma") if kwargs.get("gamma") is not None else 0.1,
+		"season_length": kwargs.get("season_length"),
+		"forecast_periods": kwargs.get("forecast_periods"),
+		"manufacture_date": kwargs.get("manufacture_date"),
+		"item_code": kwargs.get("item_code"),
+		"item_group": kwargs.get("item_group"),
+		"customer": kwargs.get("customer"),
+		"territory": kwargs.get("territory"),
+		"product_segment": kwargs.get("product_segment"),
+		"sales_category": kwargs.get("sales_category"),
+		"uom": kwargs.get("uom"),
+		"show_past_data": kwargs.get("show_past_data") or 0,
+		"show_actual_variance": kwargs.get("show_actual_variance") or 0,
+	}
+	normalized_filters = forecast_report.normalize_filters(filters)
+	columns, data, _message, chart = forecast_report.execute(filters)
+	return columns, data, chart, normalized_filters
+
+
+def _filter_rows(
+	rows,
+	item_code=None,
+	item_group=None,
+	customer=None,
+	territory=None,
+	product_segment=None,
+	sales_category=None,
+	warehouse=None,
+):
+	filtered = []
+	for row in rows or []:
+		row = frappe._dict(row or {})
+		if row.get("row_type") and row.get("row_type") != "item":
+			continue
+		if item_code and row.get("item_code") != item_code:
+			continue
+		if item_group and row.get("item_group") != item_group:
+			continue
+		if customer and row.get("customer") != customer:
+			continue
+		if territory and row.get("territory") != territory:
+			continue
+		if product_segment and row.get("product_segment") != product_segment:
+			continue
+		if sales_category and row.get("sales_category") != sales_category:
+			continue
+		if warehouse and row.get("warehouse") != warehouse:
+			continue
+		filtered.append(row)
+	return filtered
+
+
+def _normalize_requested_period(period, periodicity):
+	if not period:
+		return None
+
+	period_text = cstr(period).strip()
+	if not period_text:
+		return None
+
+	if len(period_text) == 7:
+		period_text = f"{period_text}-01"
+
+	return forecast_report.normalize_to_period(getdate(period_text), periodicity)
+
+
+def _build_period_totals(rows, columns, normalized_filters):
+	column_labels = {col.get("fieldname"): col.get("label") for col in columns if isinstance(col, dict)}
+	period_totals = defaultdict(
+		lambda: {
+			"period": None,
+			"period_label": None,
+			"actual_qty": 0.0,
+			"actual_value": 0.0,
+			"forecast_qty": 0.0,
+			"forecast_value": 0.0,
+			"variance_qty": 0.0,
+			"variance_value": 0.0,
+		}
+	)
+
+	for row in rows or []:
+		row = frappe._dict(row or {})
+		if row.get("row_type") and row.get("row_type") != "item":
+			continue
+		for fieldname, value in row.items():
+			if not value or "_" not in fieldname:
+				continue
+			suffix = None
+			for prefix in (
+				"actual_qty",
+				"actual_value",
+				"forecast_qty",
+				"forecast_value",
+				"variance_qty",
+				"variance_value",
+			):
+				if fieldname.startswith(f"{prefix}_"):
+					suffix = fieldname[len(prefix) + 1 :]
+					break
+			if not suffix:
+				continue
+			period = _suffix_to_period(suffix)
+			if not period:
+				continue
+			bucket = period_totals[period]
+			bucket["period"] = period
+			bucket["period_label"] = column_labels.get(fieldname) or forecast_report.get_period_label(
+				period, normalized_filters.periodicity
+			)
+			bucket[prefix] += flt(value)
+
+	results = []
+	for period in sorted(period_totals):
+		bucket = period_totals[period]
+		results.append(
+			{
+				"period": bucket["period"],
+				"period_label": bucket["period_label"],
+				"actual_qty": forecast_report.rounded_quantity(bucket["actual_qty"]),
+				"actual_value": forecast_report.rounded_value(bucket["actual_value"]),
+				"forecast_qty": forecast_report.rounded_quantity(bucket["forecast_qty"]),
+				"forecast_value": forecast_report.rounded_value(bucket["forecast_value"]),
+				"variance_qty": forecast_report.rounded_quantity(bucket["variance_qty"]),
+				"variance_value": forecast_report.rounded_value(bucket["variance_value"]),
+			}
+		)
+	return results
+
+
+def _build_group_totals(rows):
+	group_totals = defaultdict(
+		lambda: {
+			"group_key": None,
+			"item_code": None,
+			"item_group": None,
+			"customer": None,
+			"territory": None,
+			"product_segment": None,
+			"sales_category": None,
+			"warehouse": None,
+			"actual_qty": 0.0,
+			"actual_value": 0.0,
+			"forecast_qty": 0.0,
+			"forecast_value": 0.0,
+			"variance_qty": 0.0,
+			"variance_value": 0.0,
+		}
+	)
+	for row in rows or []:
+		row = frappe._dict(row or {})
+		if row.get("row_type") and row.get("row_type") != "item":
+			continue
+		bucket = group_totals[row.get("group_value")]
+		bucket["group_key"] = row.get("group_value")
+		bucket["item_code"] = row.get("item_code")
+		bucket["item_group"] = row.get("item_group")
+		bucket["customer"] = row.get("customer")
+		bucket["territory"] = row.get("territory")
+		bucket["product_segment"] = row.get("product_segment")
+		bucket["sales_category"] = row.get("sales_category")
+		bucket["warehouse"] = row.get("warehouse")
+		bucket["actual_qty"] += flt(row.get("actual_qty_total"))
+		bucket["actual_value"] += flt(row.get("actual_value_total"))
+		bucket["forecast_qty"] += flt(row.get("forecast_qty_total"))
+		bucket["forecast_value"] += flt(row.get("forecast_value_total"))
+		bucket["variance_qty"] += flt(row.get("variance_qty_total"))
+		bucket["variance_value"] += flt(row.get("variance_value_total"))
+
+	results = []
+	for bucket in group_totals.values():
+		results.append(
+			{
+				"group_key": bucket["group_key"],
+				"item_code": bucket["item_code"],
+				"item_group": bucket["item_group"],
+				"customer": bucket["customer"],
+				"territory": bucket["territory"],
+				"product_segment": bucket["product_segment"],
+				"sales_category": bucket["sales_category"],
+				"warehouse": bucket["warehouse"],
+				"actual_qty": forecast_report.rounded_quantity(bucket["actual_qty"]),
+				"actual_value": forecast_report.rounded_value(bucket["actual_value"]),
+				"forecast_qty": forecast_report.rounded_quantity(bucket["forecast_qty"]),
+				"forecast_value": forecast_report.rounded_value(bucket["forecast_value"]),
+				"variance_qty": forecast_report.rounded_quantity(bucket["variance_qty"]),
+				"variance_value": forecast_report.rounded_value(bucket["variance_value"]),
+			}
+		)
+
+	results.sort(
+		key=lambda row: (
+			-flt(row.get("forecast_qty")),
+			-flt(row.get("actual_qty")),
+			str(row.get("group_key") or ""),
+		)
+	)
+	return results
+
+
+def _suffix_to_period(suffix):
+	try:
+		return getdate(suffix.replace("_", "-"))
+	except Exception:
+		return None
+
+
+def _serialize_filters(filters):
+	return {
+		"company": filters.company,
+		"from_date": filters.from_date.isoformat() if filters.from_date else None,
+		"to_date": filters.to_date.isoformat() if filters.to_date else None,
+		"periodicity": filters.periodicity,
+		"group_by": filters.group_by,
+		"based_on_document": filters.based_on_document,
+		"forecast_based_on": filters.forecast_based_on,
+		"warehouse": filters.warehouse,
+		"uom": getattr(filters, "uom", None),
+		"show_past_data": cint(getattr(filters, "show_past_data", 0)),
+		"show_actual_variance": cint(getattr(filters, "show_actual_variance", 0)),
+		"alpha": filters.alpha,
+		"beta": filters.beta,
+		"gamma": filters.gamma,
+		"season_length": filters.season_length,
+		"forecast_periods": filters.forecast_periods,
+		"manufacture_date": (
+			filters.manufacture_date.isoformat() if filters.manufacture_date else None
+		),
+	}
+
+
+def _get_common_param_properties():
+	return {
+		"company": {"type": "string", "description": "ERPNext company name."},
+		"from_date": {
+			"type": "string",
+			"description": "Report start date in YYYY-MM-DD format. Defaults to 36 months before today.",
+		},
+		"to_date": {
+			"type": "string",
+			"description": "Report end date in YYYY-MM-DD format. Defaults to today.",
+		},
+		"based_on_document": {
+			"type": "string",
+			"enum": ["Sales Order", "Sales Invoice", "Delivery Note"],
+			"description": "Source document type for historical sales.",
+			"default": "Sales Order",
+		},
+		"forecast_based_on": {
+			"type": "string",
+			"enum": ["Order Date", "Delivery Date"],
+			"description": "Only relevant for Sales Order based forecasts.",
+			"default": "Delivery Date",
+		},
+		"warehouse": {
+			"type": "string",
+			"description": "Optional warehouse filter. Recommended for forecast export.",
+		},
+		"group_by": {
+			"type": "string",
+			"enum": ["Item", "Item Group", "Customer", "Territory", "Product Segment", "Sales Category"],
+			"description": "Primary grouping used in the report output.",
+		},
+		"periodicity": {
+			"type": "string",
+			"enum": ["Weekly", "Monthly", "Quarterly", "Half-Yearly", "Yearly"],
+			"description": "Period bucket for the forecast.",
+		},
+		"alpha": {
+			"type": "number",
+			"description": "Holt-Winters alpha smoothing factor.",
+			"default": 0.3,
+		},
+		"beta": {"type": "number", "description": "Holt-Winters beta smoothing factor."},
+		"gamma": {"type": "number", "description": "Holt-Winters gamma smoothing factor."},
+		"season_length": {"type": "integer", "description": "Season length used by Holt-Winters."},
+		"forecast_periods": {"type": "integer", "description": "How many future periods to forecast."},
+		"manufacture_date": {
+			"type": "string",
+			"description": "Optional manufacture date in YYYY-MM-DD format for locked periods.",
+		},
+		"item_code": {"type": "string", "description": "Optional exact Item code filter."},
+		"item_group": {"type": "string", "description": "Optional exact Item Group filter."},
+		"customer": {"type": "string", "description": "Optional exact Customer filter."},
+		"territory": {"type": "string", "description": "Optional exact Territory filter."},
+		"product_segment": {"type": "string", "description": "Optional exact Product Segment filter."},
+		"sales_category": {"type": "string", "description": "Optional exact Sales Category filter."},
+		"uom": {"type": "string", "description": "Optional qty conversion UOM."},
+		"show_past_data": {"type": "boolean", "description": "Show historical period columns in the table."},
+		"show_actual_variance": {
+			"type": "boolean",
+			"description": "Show actual and variance columns for forecast periods.",
+		},
+		"period": {
+			"type": "string",
+			"description": "Optional specific period to answer for, in YYYY-MM or YYYY-MM-DD format.",
+		},
 	}
 
 

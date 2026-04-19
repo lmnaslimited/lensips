@@ -1,6 +1,5 @@
 frappe.query_reports["LENS Sales Forecast Holt Winters"] = {
 	onload: function (report) {
-		toggle_forecast_based_on_filter(report);
 		add_export_button(report);
 	},
 	filters: [
@@ -63,12 +62,24 @@ frappe.query_reports["LENS Sales Forecast Holt Winters"] = {
 			},
 		},
 		{
+			fieldname: "uom",
+			label: __("Qty UOM"),
+			fieldtype: "Link",
+			options: "UOM",
+		},
+		{
 			fieldname: "group_by",
 			label: __("Group By"),
 			fieldtype: "Select",
-			options: ["Item", "Item Group", "Customer", "Sales Group"],
+			options: ["Item", "Item Group", "Customer", "Territory", "Product Segment", "Sales Category"],
 			default: "Item",
 			reqd: 1,
+		},
+		{
+			fieldname: "show_past_data",
+			label: __("Show Past Data"),
+			fieldtype: "Check",
+			default: 0,
 		},
 		{
 			fieldname: "periodicity",
@@ -119,19 +130,22 @@ frappe.query_reports["LENS Sales Forecast Holt Winters"] = {
 			fieldtype: "Date",
 		},
 	],
+	tree: true,
+	name_field: "display_name",
+	parent_field: "parent_display_name",
+	initial_depth: 0,
+	formatter: function (value, row, column, data, default_formatter) {
+		const formatted = default_formatter(value, row, column, data);
+		if (data && data.row_type === "group") {
+			return `<b>${formatted}</b>`;
+		}
+		return formatted;
+	},
 };
-
-function toggle_forecast_based_on_filter(report) {
-	const document_type = report.get_filter_value("based_on_document");
-	const forecast_filter = report.get_filter("forecast_based_on");
-	const show_forecast_basis = document_type === "Sales Order";
-
-	forecast_filter.toggle(show_forecast_basis);
-}
 
 function add_export_button(report) {
 	report.page.add_inner_button(__("Export to Sales Forecast"), () => {
-		const data = (frappe.query_report.data || []).filter((row) => row && !row._rowIndex);
+		const data = (frappe.query_report.data || []).filter((row) => row && row.row_type === "item");
 		const filters = frappe.query_report.get_filter_values();
 
 		frappe.call({
@@ -147,7 +161,13 @@ function add_export_button(report) {
 					return;
 				}
 
-				frappe.msgprint(__("Sales Forecast Created: {0}", [r.message.forecast_name]));
+				const forecast_names = r.message.forecast_names || (r.message.forecast_name ? [r.message.forecast_name] : []);
+				frappe.msgprint(
+					__(
+						"Sales Forecast Created: {0}",
+						[forecast_names.length ? forecast_names.join(", ") : __("No document returned")]
+					)
+				);
 			},
 		});
 	});

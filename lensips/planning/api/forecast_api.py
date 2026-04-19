@@ -14,7 +14,9 @@ def create_sales_forecast_from_report(data, filters):
 
 	return {
 		"forecast_name": result["forecast_name"],
+		"forecast_names": result.get("forecast_names") or ([] if not result.get("forecast_name") else [result["forecast_name"]]),
+		"results": result.get("results") or [],
 		"total_items": result["total_items"],
+		"total_entries": result.get("total_entries", 0),
 		"message": result["message"],
 	}
-
