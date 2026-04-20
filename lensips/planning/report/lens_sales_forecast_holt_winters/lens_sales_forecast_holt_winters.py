@@ -1052,6 +1052,7 @@ def make_row(
 		"item_name": bucket.get("item_name") if row_type == "item" or is_item_group else bucket.get("group_value"),
 		"item_group": bucket.get("item_group"),
 		"customer": bucket.get("customer"),
+		"price_list": bucket.get("price_list"),
 		"territory": bucket.get("territory"),
 		"sales_category": bucket.get("sales_category"),
 		"product_segment": bucket.get("product_segment"),

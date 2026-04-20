@@ -2,13 +2,12 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "field:assignment_name",
- "creation": "2026-04-16 00:00:00.000000",
+ "creation": "2026-04-16 00:00:00",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "assignment_name",
-  "forecast_model",
   "object_type",
   "item_code",
   "warehouse",
@@ -27,14 +26,6 @@
    "label": "Assignment Name",
    "reqd": 1,
    "unique": 1
-  },
-  {
-   "fieldname": "forecast_model",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Forecast Model",
-   "options": "Forecast Model",
-   "reqd": 1
   },
   {
    "fieldname": "object_type",
@@ -92,10 +83,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-16 00:00:00.000000",
+ "modified": "2026-04-20 21:21:18.751088",
  "modified_by": "Administrator",
  "module": "Planning",
  "name": "Planning Object Assignment",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -133,9 +125,9 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
  "title_field": "assignment_name"
 }
-

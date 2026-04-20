@@ -30,15 +30,17 @@ def create_sales_forecast(data, filters, columns=None):
 	if not report_rows:
 		frappe.throw(_("No future forecast rows with positive forecast quantity were found to export."))
 
-	report_rows = aggregate_rows_by_item_and_warehouse(report_rows)
-	period_specs = extract_period_specs(columns, report_rows)
+	item_rows_source = aggregate_rows_by_item_and_warehouse(report_rows)
+	entry_rows_source = aggregate_rows_by_item_customer_and_warehouse(report_rows)
+	period_specs = extract_period_specs(columns, item_rows_source)
 	future_specs = future_period_specs(period_specs, start_date)
 	if not future_specs:
 		frappe.throw(_("No future forecast periods were found to export."))
 
-	warehouse_names = sorted({row.get("warehouse") for row in report_rows if row.get("warehouse")})
+	warehouse_names = sorted({row.get("warehouse") for row in item_rows_source if row.get("warehouse")})
 	warehouse_map = load_warehouse_map(warehouse_names)
-	rows_by_parent_warehouse = group_rows_by_parent_warehouse(report_rows, warehouse_map)
+	rows_by_parent_warehouse = group_rows_by_parent_warehouse(item_rows_source, warehouse_map)
+	detail_rows_by_parent_warehouse = group_rows_by_parent_warehouse(entry_rows_source, warehouse_map)
 	existing_forecasts = load_existing_forecasts(
 		company=clean_filters["company"],
 		start_date=start_date,
@@ -50,11 +52,13 @@ def create_sales_forecast(data, filters, columns=None):
 	total_entries = 0
 	for parent_warehouse in sorted(rows_by_parent_warehouse):
 		rows = rows_by_parent_warehouse[parent_warehouse]
+		detail_rows = detail_rows_by_parent_warehouse.get(parent_warehouse, [])
 		forecast_doc = existing_forecasts.get(parent_warehouse) or frappe.new_doc(parent_meta.name)
 		existing_items = get_existing_item_map(forecast_doc) if not forecast_doc.is_new() else {}
 		selected_items = build_selected_items(rows, child_meta)
 		item_rows, entry_rows = build_export_rows(
 			rows=rows,
+			detail_rows=detail_rows,
 			future_specs=future_specs,
 			existing_items=existing_items,
 			child_meta=child_meta,
@@ -256,6 +260,55 @@ def aggregate_rows_by_item_and_warehouse(rows):
 	return list(aggregated.values())
 
 
+def aggregate_rows_by_item_customer_and_warehouse(rows):
+	aggregated = {}
+	for row in rows or []:
+		item_code = cstr(row.get("item_code")).strip()
+		customer = cstr(row.get("customer")).strip()
+		warehouse = cstr(row.get("warehouse")).strip()
+		delivery_date = getdate(row.get("delivery_date")) if row.get("delivery_date") else None
+		if not item_code or not customer or not warehouse:
+			continue
+
+		key = (item_code, customer, warehouse, delivery_date)
+		target = aggregated.get(key)
+		if not target:
+			target = frappe._dict(
+				{
+					"item_code": item_code,
+					"item_name": row.get("item_name") or item_code,
+					"customer": customer,
+					"uom": row.get("uom"),
+					"warehouse": warehouse,
+					"delivery_date": delivery_date or row.get("delivery_date"),
+					"price_list": row.get("price_list"),
+					"is_locked": cint(row.get("is_locked", 0)),
+					"actual_qty_total": 0.0,
+					"actual_value_total": 0.0,
+					"forecast_qty_total": 0.0,
+					"forecast_value_total": 0.0,
+				}
+			)
+			aggregated[key] = target
+		else:
+			target.item_name = target.item_name or row.get("item_name") or item_code
+			target.uom = target.uom or row.get("uom")
+			target.price_list = target.price_list or row.get("price_list")
+			target.is_locked = max(cint(target.get("is_locked", 0)), cint(row.get("is_locked", 0)))
+
+		for key_name, value in row.items():
+			if key_name in {"item_code", "item_name", "customer", "uom", "warehouse", "delivery_date", "price_list", "is_locked"}:
+				continue
+			match = PERIOD_FIELD_RE.match(key_name)
+			if match:
+				target[key_name] = flt(target.get(key_name, 0)) + flt(value or 0)
+				continue
+			if key_name in {"actual_qty_total", "actual_value_total", "forecast_qty_total", "forecast_value_total"}:
+				target[key_name] = flt(target.get(key_name, 0)) + flt(value or 0)
+
+	return list(aggregated.values())
+
+
 def extract_period_specs(columns, rows):
 	suffixes = {}
 
@@ -404,7 +457,7 @@ def build_selected_items(rows, child_meta):
 	return selected
 
 
-def build_export_rows(rows, future_specs, existing_items, child_meta, detail_meta, company, periodicity):
+def build_export_rows(rows, detail_rows, future_specs, existing_items, child_meta, detail_meta, company, periodicity):
 	item_rows = []
 	entry_rows = []
 
@@ -479,23 +532,46 @@ def build_export_rows(rows, future_specs, existing_items, child_meta, detail_met
 					"locked": locked,
 				}
 			)
-			if detail_meta:
-				entry_rows.append(
-					{
-						"company": company,
-						"customer": customer,
-						"item_code": item_code,
-						"warehouse": warehouse or None,
-						"period": spec.period,
-						"forecast_qty": forecast_qty,
-						"forecast_value": forecast_value,
-						"price_list": row.get("price_list"),
-						"actual_qty": actual_qty,
-						"actual_value": actual_value,
-					}
+	if detail_meta:
+		for detail_row in detail_rows or []:
+			entry_rows.extend(
+				build_forecast_entries_for_row(
+					row=detail_row,
+					future_specs=future_specs,
+					company=company,
 				)
+			)
 
 	return item_rows, entry_rows
+
+
+def build_forecast_entries_for_row(row, future_specs, company):
+	entries = []
+	item_code = cstr(row.get("item_code")).strip()
+	customer = cstr(row.get("customer")).strip() or None
+	warehouse = cstr(row.get("warehouse")).strip() or None
+	for spec in future_specs:
+		forecast_qty = rounded_quantity(row.get(f"forecast_qty_{spec.suffix}") or 0)
+		if forecast_qty <= 0:
+			continue
+		actual_qty = rounded_quantity(row.get(f"actual_qty_{spec.suffix}") or 0)
+		actual_value = rounded_value(row.get(f"actual_value_{spec.suffix}") or 0)
+		forecast_value = rounded_value(row.get(f"forecast_value_{spec.suffix}") or 0)
+		entries.append(
+			{
+				"company": company,
+				"customer": customer,
+				"item_code": item_code,
+				"warehouse": warehouse,
+				"period": spec.period,
+				"forecast_qty": forecast_qty,
+				"forecast_value": forecast_value,
+				"price_list": row.get("price_list"),
+				"actual_qty": actual_qty,
+				"actual_value": actual_value,
+			}
+		)
+	return entries
 
 
 def get_forecast_item_key(item_code, warehouse, delivery_date):

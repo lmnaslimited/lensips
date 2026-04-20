@@ -2,26 +2,29 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "field:model_name",
- "creation": "2026-04-16 00:00:00.000000",
+ "creation": "2026-04-16 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "model_name",
   "program",
   "planning_time_profile",
+  "column_break_qgmf",
+  "model_name",
   "planning_measure",
   "scope_section",
   "company",
   "default_uom",
+  "column_break_vows",
   "history_months",
-  "forecast_months",
   "bucket_granularity",
-  "assignment_section",
-  "planning_object_assignments",
+  "forecast_months",
+  "pre_processing_steps_tab",
   "preprocessing_section",
   "preprocessing_steps",
+  "forecasting_steps_tab",
   "forecasting_section",
   "forecasting_steps",
+  "post_processing_steps_tab",
   "postprocessing_section",
   "postprocessing_steps",
   "notes"
@@ -93,20 +96,8 @@
    "options": "\nWeek\nMonth\nQuarter\nFiscal Period"
   },
   {
-   "fieldname": "assignment_section",
-   "fieldtype": "Section Break",
-   "label": "Planning Object Assignment"
-  },
-  {
-   "fieldname": "planning_object_assignments",
-   "fieldtype": "Table",
-   "label": "Planning Object Assignments",
-   "options": "Planning Object Assignment"
-  },
-  {
    "fieldname": "preprocessing_section",
-   "fieldtype": "Section Break",
-   "label": "Preprocessing Steps"
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "preprocessing_steps",
@@ -116,8 +107,7 @@
   },
   {
    "fieldname": "forecasting_section",
-   "fieldtype": "Section Break",
-   "label": "Forecasting Steps"
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "forecasting_steps",
@@ -127,8 +117,7 @@
   },
   {
    "fieldname": "postprocessing_section",
-   "fieldtype": "Section Break",
-   "label": "Postprocessing Steps"
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "postprocessing_steps",
@@ -140,14 +129,38 @@
    "fieldname": "notes",
    "fieldtype": "Small Text",
    "label": "Notes"
+  },
+  {
+   "fieldname": "column_break_qgmf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_vows",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pre_processing_steps_tab",
+   "fieldtype": "Tab Break",
+   "label": "Pre Processing Steps"
+  },
+  {
+   "fieldname": "forecasting_steps_tab",
+   "fieldtype": "Tab Break",
+   "label": "Forecasting Steps"
+  },
+  {
+   "fieldname": "post_processing_steps_tab",
+   "fieldtype": "Tab Break",
+   "label": "Post Processing Steps"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-16 00:00:00.000000",
+ "modified": "2026-04-20 21:46:09.985605",
  "modified_by": "Administrator",
  "module": "Planning",
  "name": "Forecast Model",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -185,9 +198,9 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
  "title_field": "model_name"
 }
-

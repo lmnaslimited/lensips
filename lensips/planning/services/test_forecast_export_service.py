@@ -72,6 +72,7 @@ class TestForecastExportService(FrappeTestCase):
 				{
 					"item_code": "ITEM-001",
 					"item_name": "Item 001",
+					"customer": "CUST-001",
 					"uom": "CTN",
 					"warehouse": "161 - H",
 					"delivery_date": date(2026, 1, 1),
@@ -187,6 +188,7 @@ class TestForecastExportService(FrappeTestCase):
 				{
 					"item_code": "ITEM-002",
 					"item_name": "Item 002",
+					"customer": "CUST-002",
 					"uom": "PL1",
 					"warehouse": "161 - H",
 					"price_list": "Standard Buying",
@@ -227,6 +229,7 @@ class TestForecastExportService(FrappeTestCase):
 
 		item_rows, entry_rows = build_export_rows(
 			rows=rows,
+			detail_rows=rows,
 			future_specs=future_specs,
 			existing_items=existing_items,
 			child_meta=child_meta,
@@ -238,6 +241,7 @@ class TestForecastExportService(FrappeTestCase):
 		self.assertEqual(len(item_rows), 2)
 		self.assertEqual(len(entry_rows), 2)
 		self.assertEqual(entry_rows[0]["price_list"], "Standard Buying")
+		self.assertIn("customer", entry_rows[0])
 
 		new_row = next(row for row in item_rows if row["item_code"] == "ITEM-001")
 		self.assertEqual(new_row["actual_qty"], 12)
