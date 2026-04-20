@@ -7,6 +7,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from lensips.planning.services.forecast_export_service import (
+	aggregate_rows_by_item_and_warehouse,
 	PeriodSpec,
 	build_export_rows,
 	group_rows_by_parent_warehouse,
@@ -40,7 +41,7 @@ class TestForecastExportService(FrappeTestCase):
 		self.assertEqual(len(grouped["REGIONAL - H"]), 2)
 		self.assertEqual(resolve_parent_warehouse("161 - H", warehouse_map), "REGIONAL - H")
 
-	def test_normalize_report_rows_prefers_group_rows(self):
+	def test_normalize_report_rows_prefers_item_rows(self):
 		rows = [
 			frappe._dict(
 				{
@@ -63,7 +64,88 @@ class TestForecastExportService(FrappeTestCase):
 		normalized = normalize_report_rows(rows)
 
 		self.assertEqual(len(normalized), 1)
-		self.assertEqual(normalized[0]["forecast_qty_total"], 314)
+		self.assertEqual(normalized[0]["forecast_qty_total"], 33)
+
+	def test_aggregate_rows_by_item_and_warehouse_sums_by_delivery_date(self):
+		rows = [
+			frappe._dict(
+				{
+					"item_code": "ITEM-001",
+					"item_name": "Item 001",
+					"uom": "CTN",
+					"warehouse": "161 - H",
+					"delivery_date": date(2026, 1, 1),
+					"price_list": "Standard Buying",
+					"is_locked": 0,
+					"forecast_qty_2026_01_01": 10,
+					"forecast_value_2026_01_01": 100.0,
+					"actual_qty_2026_01_01": 3,
+					"actual_value_2026_01_01": 30.0,
+					"forecast_qty_total": 10,
+					"forecast_value_total": 100.0,
+					"actual_qty_total": 3,
+					"actual_value_total": 30.0,
+				}
+			),
+			frappe._dict(
+				{
+					"item_code": "ITEM-001",
+					"item_name": "Item 001",
+					"uom": "CTN",
+					"warehouse": "161 - H",
+					"delivery_date": date(2026, 1, 1),
+					"price_list": "Standard Buying",
+					"is_locked": 1,
+					"forecast_qty_2026_01_01": 5,
+					"forecast_value_2026_01_01": 50.0,
+					"actual_qty_2026_01_01": 2,
+					"actual_value_2026_01_01": 20.0,
+					"forecast_qty_total": 5,
+					"forecast_value_total": 50.0,
+					"actual_qty_total": 2,
+					"actual_value_total": 20.0,
+				}
+			),
+			frappe._dict(
+				{
+					"item_code": "ITEM-001",
+					"item_name": "Item 001",
+					"uom": "CTN",
+					"warehouse": "161 - H",
+					"delivery_date": date(2026, 1, 8),
+					"price_list": "Standard Buying",
+					"is_locked": 0,
+					"forecast_qty_2026_01_08": 7,
+					"forecast_value_2026_01_08": 70.0,
+					"actual_qty_2026_01_08": 1,
+					"actual_value_2026_01_08": 10.0,
+					"forecast_qty_total": 7,
+					"forecast_value_total": 70.0,
+					"actual_qty_total": 1,
+					"actual_value_total": 10.0,
+				}
+			),
+		]
+
+		aggregated = aggregate_rows_by_item_and_warehouse(rows)
+
+		self.assertEqual(len(aggregated), 2)
+		row = next(row for row in aggregated if row["delivery_date"] == date(2026, 1, 1))
+		self.assertEqual(row["forecast_qty_2026_01_01"], 15)
+		self.assertEqual(row["forecast_value_2026_01_01"], 150.0)
+		self.assertEqual(row["actual_qty_2026_01_01"], 5)
+		self.assertEqual(row["actual_value_2026_01_01"], 50.0)
+		self.assertEqual(row["forecast_qty_total"], 15)
+		self.assertEqual(row["forecast_value_total"], 150.0)
+		self.assertEqual(row["actual_qty_total"], 5)
+		self.assertEqual(row["actual_value_total"], 50.0)
+		self.assertEqual(row["is_locked"], 1)
+
+		second_row = next(row for row in aggregated if row["delivery_date"] == date(2026, 1, 8))
+		self.assertEqual(second_row["forecast_qty_2026_01_08"], 7)
+		self.assertEqual(second_row["forecast_value_2026_01_08"], 70.0)
+		self.assertEqual(second_row["actual_qty_2026_01_08"], 1)
+		self.assertEqual(second_row["actual_value_2026_01_08"], 10.0)
 
 	def test_build_export_rows_uses_same_period_actuals_and_preserves_locked_rows(self):
 		child_meta = SimpleNamespace(
