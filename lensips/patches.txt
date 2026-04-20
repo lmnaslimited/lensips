@@ -14,5 +14,6 @@ lensips.patches.v0_0.setup_planning_workspace_and_roles
 lensips.patches.v0_0.setup_sales_forecast_locked_field
 lensips.patches.v0_0.setup_sales_forecast_item_fields
 lensips.patches.v0_0.setup_item_characteristics_fields
+lensips.patches.v0_0.setup_item_characteristics_fields_v2
 lensips.patches.v0_0.setup_mrpiims_sample_setup
 lensips.patches.v0_0.bin_logic
