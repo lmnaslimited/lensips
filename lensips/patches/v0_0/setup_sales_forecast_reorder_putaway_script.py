@@ -1,3 +1,13 @@
+from __future__ import annotations
+
+import frappe
+
+
+CLIENT_SCRIPT_NAME = "Sales Forecast - Create Reorder and Put Away"
+
+
+def execute():
+	script = """
 function set_sales_forecast_item_value(cdt, cdn, fieldname, value) {
 	const row = locals[cdt][cdn];
 	if (flt(row[fieldname]) === flt(value)) {
@@ -19,16 +29,6 @@ function update_sales_forecast_item_row(frm, cdt, cdn) {
 	set_sales_forecast_item_value(cdt, cdn, "adjust_value", adjust_value);
 	set_sales_forecast_item_value(cdt, cdn, "demand_qty", demand_qty);
 	set_sales_forecast_item_value(cdt, cdn, "demand_value", demand_value);
-}
-
-function make_form_links(doctype, names) {
-	if (!names || !names.length) {
-		return __("No document returned");
-	}
-
-	return names
-		.map((name) => `<a href="/app/Form/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}">${frappe.utils.escape_html(name)}</a>`)
-		.join(", ");
 }
 
 function set_sales_forecast_item_row_state(frm, cdt, cdn) {
@@ -77,7 +77,7 @@ function add_create_reorder_and_putaway_button(frm) {
 							title: __("Create Reorder and Put Away"),
 							indicator: names.length ? "green" : "orange",
 							message: names.length
-								? __("Created Reorder and Putaway Rule(s): {0}", [make_form_links("Reorder and Putaway Rule", names)])
+								? __("Created Reorder and Putaway Rule(s): {0}", [names.join(", ")])
 								: __("No Reorder and Putaway Rule was created."),
 						});
 					},
@@ -122,3 +122,29 @@ frappe.ui.form.on("Sales Forecast Item", {
 		set_sales_forecast_item_row_state(frm, cdt, cdn);
 	},
 });
+""".strip()
+
+	doc = frappe.get_doc(
+		{
+			"doctype": "Client Script",
+			"name": CLIENT_SCRIPT_NAME,
+			"dt": "Sales Forecast",
+			"view": "Form",
+			"module": "Planning",
+			"enabled": 1,
+			"script": script,
+		}
+	)
+
+	if frappe.db.exists("Client Script", CLIENT_SCRIPT_NAME):
+		existing = frappe.get_doc("Client Script", CLIENT_SCRIPT_NAME)
+		existing.dt = doc.dt
+		existing.view = doc.view
+		existing.module = doc.module
+		existing.enabled = doc.enabled
+		existing.script = doc.script
+		existing.save(ignore_permissions=True)
+	else:
+		doc.insert(ignore_permissions=True)
+
+	frappe.clear_cache(doctype="Sales Forecast")

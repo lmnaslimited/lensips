@@ -150,6 +150,16 @@ frappe.query_reports["LENS Sales Forecast Holt Winters"] = {
 	},
 };
 
+function make_doc_links(doctype, names) {
+	if (!names || !names.length) {
+		return __("No document returned");
+	}
+
+	return names
+		.map((name) => `<a href="/app/Form/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}">${frappe.utils.escape_html(name)}</a>`)
+		.join(", ");
+}
+
 function add_export_button(report) {
 	report.page.add_inner_button(__("Export to Sales Forecast"), () => {
 		const filters = frappe.query_report.get_filter_values();
@@ -179,12 +189,7 @@ function add_export_button(report) {
 				}
 
 				const forecast_names = r.message.forecast_names || (r.message.forecast_name ? [r.message.forecast_name] : []);
-				frappe.msgprint(
-					__(
-						"Sales Forecast Created: {0}",
-						[forecast_names.length ? forecast_names.join(", ") : __("No document returned")]
-					)
-				);
+				frappe.msgprint(__("Sales Forecast Created: {0}", [make_doc_links("Sales Forecast", forecast_names)]));
 			},
 		});
 	});
@@ -205,12 +210,7 @@ function add_export_button(report) {
 				}
 
 				const forecast_names = r.message.forecast_names || (r.message.forecast_name ? [r.message.forecast_name] : []);
-				frappe.msgprint(
-					__(
-						"Sales Forecast Created: {0}",
-						[forecast_names.length ? forecast_names.join(", ") : __("No document returned")]
-					)
-				);
+				frappe.msgprint(__("Sales Forecast Created: {0}", [make_doc_links("Sales Forecast", forecast_names)]));
 
 				if (report.refresh) {
 					report.refresh();
@@ -247,12 +247,7 @@ function poll_export_job(report, job_id) {
 
 					const result = r.message.result || {};
 					const forecast_names = result.forecast_names || (result.forecast_name ? [result.forecast_name] : []);
-					frappe.msgprint(
-						__(
-							"Sales Forecast Created: {0}",
-							[forecast_names.length ? forecast_names.join(", ") : __("No document returned")]
-						)
-					);
+					frappe.msgprint(__("Sales Forecast Created: {0}", [make_doc_links("Sales Forecast", forecast_names)]));
 
 					if (report.refresh) {
 						report.refresh();

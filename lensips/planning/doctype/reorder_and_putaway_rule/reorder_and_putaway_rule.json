@@ -1,0 +1,180 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-04-21 18:59:02.431603",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sales_forecast",
+  "company",
+  "warehouse",
+  "column_break_1",
+  "frequency",
+  "period",
+  "status",
+  "items_section",
+  "items",
+  "info_tab",
+  "coverage_section",
+  "planned_item_percentage",
+  "amended_from",
+  "column_break_cbdj",
+  "total_forecast_item_count",
+  "planned_item_count"
+ ],
+ "fields": [
+  {
+   "fieldname": "sales_forecast",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sales Forecast",
+   "options": "Sales Forecast",
+   "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Warehouse",
+   "options": "Warehouse",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "frequency",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Frequency",
+   "options": "Weekly\nMonthly",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "period",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Period",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "\nDraft\nSubmitted\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "coverage_section",
+   "fieldtype": "Section Break",
+   "label": "Coverage"
+  },
+  {
+   "fieldname": "planned_item_percentage",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Planned Item %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "planned_item_count",
+   "fieldtype": "Int",
+   "label": "Planned Item Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_forecast_item_count",
+   "fieldtype": "Int",
+   "label": "Total Forecast Item Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break",
+   "label": "Reorder and Putaway Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Reorder Putaway Item"
+  },
+  {
+   "fieldname": "info_tab",
+   "fieldtype": "Tab Break",
+   "label": "Info"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Reorder and Putaway Rule",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_cbdj",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-04-21 19:27:53.472775",
+ "modified_by": "Administrator",
+ "module": "Planning",
+ "name": "Reorder and Putaway Rule",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Planning Manager",
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "read": 1,
+   "role": "Planning User",
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -18,7 +18,12 @@
   "pallet_1_uom",
   "pallet_2_uom",
   "pallet_uom_rules_section",
-  "warehouse_pallet_uom_rules"
+  "warehouse_pallet_uom_rules",
+  "capacity_planning_tab",
+  "forecast_to_capacity_ratio",
+  "reorder_quantity_based_on",
+  "column_break_spjb",
+  "forecast_to_reorder_level_ratio"
  ],
  "fields": [
   {
@@ -108,12 +113,41 @@
    "fieldtype": "Link",
    "label": "Default Transfer UOM",
    "options": "UOM"
+  },
+  {
+   "description": "If Forecast is chosen the Reorder will consider the Forecasted qty for updating the auto reorder",
+   "fieldname": "capacity_planning_tab",
+   "fieldtype": "Tab Break",
+   "label": "Capacity Planning"
+  },
+  {
+   "description": "Ratio of the maximum capacity a stock can hold to the forecasted quantity",
+   "fieldname": "forecast_to_capacity_ratio",
+   "fieldtype": "Float",
+   "label": "Forecast To Capacity Ratio"
+  },
+  {
+   "description": "Preference to update the Auto Reorder from Sales Forecast",
+   "fieldname": "reorder_quantity_based_on",
+   "fieldtype": "Select",
+   "label": "Reorder Quantity Based On",
+   "options": "Forecast\nDemand"
+  },
+  {
+   "fieldname": "column_break_spjb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Ratio of the minimum stock level to the forecasted quantity",
+   "fieldname": "forecast_to_reorder_level_ratio",
+   "fieldtype": "Float",
+   "label": "Forecast To Reorder Level Ratio"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-04-14 23:16:17.551534",
+ "modified": "2026-04-21 18:29:51.886654",
  "modified_by": "Administrator",
  "module": "Planning",
  "name": "Planning Settings",

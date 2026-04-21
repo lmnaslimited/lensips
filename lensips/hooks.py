@@ -46,6 +46,7 @@ app_license = "mit"
 doctype_js = {
 	"Sales Forecast": "public/js/sales_forecast.js",
 	"Material Request": "public/js/material_request.js",
+	"Reorder and Putaway Rule": "public/js/reorder_and_putaway_rule.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -186,6 +187,7 @@ doc_events = {
 # generated from the base implementation of the doctype dashboard,
 # along with any modifications made in other Frappe apps
 override_doctype_dashboards = {
+	"Sales Forecast": "lensips.planning.doctype.sales_forecast_dashboard.get_data",
 	"Shipment Plan": "lensips.planning.doctype.shipment_plan.shipment_plan_dashboard.get_data",
 }
 
