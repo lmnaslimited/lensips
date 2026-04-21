@@ -9,6 +9,7 @@ from frappe.utils import add_months, cint, cstr, flt, getdate
 
 from erpnext.stock.doctype.warehouse.warehouse import get_child_warehouses
 from erpnext.stock.doctype.item.item import get_uom_conv_factor
+from erpnext.stock.get_item_details import get_conversion_factor as get_item_conversion_factor
 from lensips.planning.services.forecast_pricing_service import (
 	get_customer_default_price_list,
 	get_effective_item_price,
@@ -907,7 +908,7 @@ def build_report_state(source, masters, filters):
 		period_summary[period]["period"] = period
 		period_summary[period]["period_label"] = get_period_label(period, filters.periodicity)
 		period_summary[period]["actual_qty"] += convert_qty_to_display(
-			raw_qty, bucket["stock_uom"], filters.uom, masters
+			raw_qty, bucket["stock_uom"], filters.uom, masters, child.item_code
 		)
 		period_summary[period]["actual_value"] += actual_value
 
@@ -930,7 +931,7 @@ def build_report_state(source, masters, filters):
 			future_period = next_period(future_period, filters.periodicity)
 			effective_raw = last_actual if lock_cutoff and future_period <= lock_cutoff else forecast_raw
 			display_qty = convert_qty_to_display(
-				effective_raw, bucket["stock_uom"], filters.uom, masters
+				effective_raw, bucket["stock_uom"], filters.uom, masters, bucket["item_code"]
 			)
 			price_info = get_cached_effective_item_price(
 				masters=masters,
@@ -1076,6 +1077,7 @@ def make_row(
 					bucket.get("stock_uom"),
 					filters.uom,
 					report_state.masters,
+					bucket.get("item_code"),
 				)
 			)
 			actual_value = rounded_value(metrics.get("actual_value", 0.0))
@@ -1099,6 +1101,7 @@ def make_row(
 						bucket.get("stock_uom"),
 						filters.uom,
 						report_state.masters,
+						bucket.get("item_code"),
 					)
 				)
 				actual_value = rounded_value(metrics.get("actual_value", 0.0))
@@ -1310,18 +1313,12 @@ def get_actual_value(child, filters):
 	return rounded_value(flt(child.get("rate") or 0) * get_actual_qty(child))
 
 
-def convert_qty_to_display(qty, stock_uom, target_uom, masters):
+def convert_qty_to_display(qty, stock_uom, target_uom, masters=None, item_code=None):
 	qty = flt(qty)
 	if not target_uom or not stock_uom or stock_uom == target_uom:
 		return qty
 
-	cache_key = (target_uom, stock_uom)
-	if cache_key not in masters.uom_factor_cache:
-		try:
-			masters.uom_factor_cache[cache_key] = flt(get_uom_conv_factor(target_uom, stock_uom))
-		except Exception:
-			masters.uom_factor_cache[cache_key] = 1.0
-	factor = masters.uom_factor_cache[cache_key] or 1.0
+	factor = _get_uom_display_factor(stock_uom, target_uom, masters, item_code)
 	return qty / factor
 
 
@@ -1646,7 +1643,7 @@ def build_report_state(source, masters, filters):
 		period_summary[period]["period"] = period
 		period_summary[period]["period_label"] = get_period_label(period, filters.periodicity)
 		period_summary[period]["actual_qty"] += convert_qty_to_display(
-			raw_qty, bucket["stock_uom"], filters.uom, masters
+			raw_qty, bucket["stock_uom"], filters.uom, masters, bucket["item_code"]
 		)
 		period_summary[period]["actual_value"] += actual_value
 
@@ -1667,7 +1664,7 @@ def build_report_state(source, masters, filters):
 			future_period = next_period(future_period, filters.periodicity)
 			effective_raw = last_actual if lock_cutoff and future_period <= lock_cutoff else forecast_raw
 			display_qty = convert_qty_to_display(
-				effective_raw, bucket["stock_uom"], filters.uom, masters
+				effective_raw, bucket["stock_uom"], filters.uom, masters, bucket["item_code"]
 			)
 			price_info = get_cached_effective_item_price(
 				masters=masters,
@@ -1949,18 +1946,41 @@ def get_actual_value(child, filters):
 	return rounded_value(flt(child.get("rate") or 0) * get_actual_qty(child))
 
 
-def convert_qty_to_display(qty, stock_uom, target_uom, masters):
+def convert_qty_to_display(qty, stock_uom, target_uom, masters=None, item_code=None):
 	qty = flt(qty)
 	if not target_uom or not stock_uom or stock_uom == target_uom:
 		return qty
-	cache_key = (target_uom, stock_uom)
-	if cache_key not in masters.uom_factor_cache:
-		try:
-			masters.uom_factor_cache[cache_key] = flt(get_uom_conv_factor(target_uom, stock_uom))
-		except Exception:
-			masters.uom_factor_cache[cache_key] = 1.0
-	factor = masters.uom_factor_cache[cache_key] or 1.0
+
+	factor = _get_uom_display_factor(stock_uom, target_uom, masters, item_code)
 	return qty / factor
+
+
+def _get_uom_display_factor(stock_uom, target_uom, masters=None, item_code=None):
+	cache = getattr(masters, "uom_factor_cache", None)
+	if cache is None:
+		cache = {}
+
+	cache_key = (item_code, stock_uom, target_uom)
+	if cache_key in cache:
+		return cache[cache_key] or 1.0
+
+	factor = None
+	if item_code and target_uom and target_uom != stock_uom:
+		conversion = get_item_conversion_factor(item_code, target_uom)
+		if isinstance(conversion, dict):
+			conversion = conversion.get("conversion_factor")
+		factor = flt(conversion or 0)
+
+	if not factor:
+		try:
+			factor = flt(get_uom_conv_factor(target_uom, stock_uom))
+		except Exception:
+			factor = 0
+
+	cache[cache_key] = factor or 1.0
+	if masters is not None:
+		masters.uom_factor_cache = cache
+	return cache[cache_key]
 
 
 def get_cached_effective_item_price(masters, item_code, customer, price_list, period_start, period_end, uom):
