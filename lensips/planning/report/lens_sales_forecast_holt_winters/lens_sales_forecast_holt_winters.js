@@ -160,6 +160,25 @@ function make_doc_links(doctype, names) {
 		.join(", ");
 }
 
+function format_sales_forecast_export_message(result) {
+	const rows = (result && result.results) || [];
+	if (rows.length) {
+		return rows
+			.map((row) => {
+				const label = row.action === "updated" ? __("Updated") : __("Created");
+				return __("Sales Forecast {0}: {1}", [
+					label,
+					make_doc_links("Sales Forecast", [row.forecast_name]),
+				]);
+			})
+			.join("<br><br>");
+	}
+
+	const forecast_names = result.forecast_names || (result.forecast_name ? [result.forecast_name] : []);
+	const label = result.action === "updated" ? __("Updated") : __("Created");
+	return __("Sales Forecast {0}: {1}", [label, make_doc_links("Sales Forecast", forecast_names)]);
+}
+
 function add_export_button(report) {
 	report.page.add_inner_button(__("Export to Sales Forecast"), () => {
 		const filters = frappe.query_report.get_filter_values();
@@ -188,8 +207,8 @@ function add_export_button(report) {
 					return;
 				}
 
-				const forecast_names = r.message.forecast_names || (r.message.forecast_name ? [r.message.forecast_name] : []);
-				frappe.msgprint(__("Sales Forecast Created: {0}", [make_doc_links("Sales Forecast", forecast_names)]));
+				const export_message = format_sales_forecast_export_message(r.message);
+				frappe.msgprint(export_message);
 			},
 		});
 	});
@@ -209,8 +228,8 @@ function add_export_button(report) {
 					return;
 				}
 
-				const forecast_names = r.message.forecast_names || (r.message.forecast_name ? [r.message.forecast_name] : []);
-				frappe.msgprint(__("Sales Forecast Created: {0}", [make_doc_links("Sales Forecast", forecast_names)]));
+				const export_message = format_sales_forecast_export_message(r.message);
+				frappe.msgprint(export_message);
 
 				if (report.refresh) {
 					report.refresh();
@@ -246,8 +265,8 @@ function poll_export_job(report, job_id) {
 					report._sales_forecast_export_timer = null;
 
 					const result = r.message.result || {};
-					const forecast_names = result.forecast_names || (result.forecast_name ? [result.forecast_name] : []);
-					frappe.msgprint(__("Sales Forecast Created: {0}", [make_doc_links("Sales Forecast", forecast_names)]));
+					const export_message = format_sales_forecast_export_message(result);
+					frappe.msgprint(export_message);
 
 					if (report.refresh) {
 						report.refresh();

@@ -114,6 +114,7 @@ def create_sales_forecast(data, filters, columns=None):
 				"forecast_name": forecast_doc.name,
 				"warehouse": parent_warehouse,
 				"total_items": len({row["item_code"] for row in item_rows}),
+				"action": action,
 				"message": _("Sales Forecast {0} successfully {1}.").format(forecast_doc.name, action),
 			}
 		)

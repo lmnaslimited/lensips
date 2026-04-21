@@ -20,3 +20,4 @@ lensips.patches.v0_0.bin_logic
 lensips.patches.v0_0.setup_material_request_split_po
 lensips.patches.v0_0.setup_sales_forecast_reorder_putaway_script
 lensips.patches.v0_0.setup_reorder_and_putaway_rule_client_script
+lensips.patches.v0_0.setup_planning_desktop_icon
