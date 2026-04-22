@@ -6,7 +6,7 @@
    "label": "Sales Order Trends"
   }
  ],
- "content": "[{\"id\":\"5Q6b5-_uyr\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Planning Masters</b></span>\",\"col\":12}},{\"id\":\"H4AoDrHpvE\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Sales Order Trends\",\"col\":12}},{\"id\":\"nBTlwFvX3a\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning Masters\",\"col\":4}},{\"id\":\"N0fU4xVdY4\",\"type\":\"card\",\"data\":{\"card_name\":\"Core Masters\",\"col\":4}},{\"id\":\"hKjThB0T9j\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning Reports\",\"col\":4}},{\"id\":\"-CAAvC4NP5\",\"type\":\"header\",\"data\":{\"text\":\"<span style=\\\"caret-color: rgb(124, 124, 124);\\\"><b>Transactions</b></span>\",\"col\":12}},{\"id\":\"GCYSks1ZMe\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Order\",\"col\":4}},{\"id\":\"Bzt6mKDOQw\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":4}},{\"id\":\"3uMA6AVYDd\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Forecast Runs\",\"col\":3}},{\"id\":\"TrJ3e2lDoV\",\"type\":\"header\",\"data\":{\"text\":\"<span style=\\\"font-size: 16px;\\\"><b>MRPIIIS</b></span>\",\"col\":12}},{\"id\":\"pmh47zvhQl\",\"type\":\"card\",\"data\":{\"card_name\":\"Forecast\",\"col\":4}},{\"id\":\"9kQgx9xEeS\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning\",\"col\":4}},{\"id\":\"fdntLzylpq\",\"type\":\"card\",\"data\":{\"card_name\":\"Production\",\"col\":4}}]",
+ "content": "[{\"id\":\"5Q6b5-_uyr\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Planning Masters</b></span>\",\"col\":12}},{\"id\":\"H4AoDrHpvE\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Sales Order Trends\",\"col\":12}},{\"id\":\"nBTlwFvX3a\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning Masters\",\"col\":4}},{\"id\":\"N0fU4xVdY4\",\"type\":\"card\",\"data\":{\"card_name\":\"Core Masters\",\"col\":4}},{\"id\":\"hKjThB0T9j\",\"type\":\"card\",\"data\":{\"card_name\":\"Key Planning Reports\",\"col\":4}},{\"id\":\"-CAAvC4NP5\",\"type\":\"header\",\"data\":{\"text\":\"<span style=\\\"caret-color: rgb(124, 124, 124);\\\"><b>Transactions</b></span>\",\"col\":12}},{\"id\":\"MYRGx9hk94\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Requests\",\"col\":4}},{\"id\":\"Kddx6r6y14\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Transfer Requests\",\"col\":4}},{\"id\":\"rVVD9iabbK\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Manufacturing Requests\",\"col\":4}},{\"id\":\"GCYSks1ZMe\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Order\",\"col\":4}},{\"id\":\"Bzt6mKDOQw\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":4}},{\"id\":\"vXKD4bl_lx\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Draft POs\",\"col\":4}},{\"id\":\"3uMA6AVYDd\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Forecast Runs\",\"col\":4}},{\"id\":\"TrJ3e2lDoV\",\"type\":\"header\",\"data\":{\"text\":\"<span style=\\\"font-size: 16px;\\\"><b>MRPIIMS</b></span>\",\"col\":12}},{\"id\":\"pmh47zvhQl\",\"type\":\"card\",\"data\":{\"card_name\":\"Forecast\",\"col\":4}},{\"id\":\"9kQgx9xEeS\",\"type\":\"card\",\"data\":{\"card_name\":\"Planning\",\"col\":4}},{\"id\":\"aVbCewLUsf\",\"type\":\"card\",\"data\":{\"card_name\":\"Procurement\",\"col\":4}},{\"id\":\"fdntLzylpq\",\"type\":\"card\",\"data\":{\"card_name\":\"Production\",\"col\":4}},{\"id\":\"TlU7Ozn444\",\"type\":\"card\",\"data\":{\"card_name\":\"Shipment\",\"col\":4}}]",
  "creation": "2026-04-10 00:00:00",
  "custom_blocks": [],
  "docstatus": 0,
@@ -83,7 +83,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Planning Masters",
-   "link_count": 4,
+   "link_count": 5,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -92,7 +92,7 @@
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Lens Pallet Profile",
+   "label": "Pallet Profile",
    "link_count": 0,
    "link_to": "Lens Pallet Profile",
    "link_type": "DocType",
@@ -103,7 +103,7 @@
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Lens Container Profile",
+   "label": "Container Profile",
    "link_count": 0,
    "link_to": "Lens Container Profile",
    "link_type": "DocType",
@@ -134,18 +134,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Forecast",
-   "link_count": 2,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Forecast Model",
+   "label": "Planning Settings",
    "link_count": 0,
-   "link_to": "Forecast Model",
+   "link_to": "Planning Settings",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -153,17 +144,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Sales Forecast",
-   "link_count": 0,
-   "link_to": "Sales Forecast",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Planning",
+   "label": "Procurement",
    "link_count": 3,
    "link_type": "DocType",
    "onboard": 0,
@@ -172,9 +153,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Item Lead Time",
+   "label": "Purchase Order",
    "link_count": 0,
-   "link_to": "Item Lead Time",
+   "link_to": "Purchase Order",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -182,20 +163,69 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Master Production Schedule",
+   "label": "Material Request",
    "link_count": 0,
-   "link_to": "Master Production Schedule",
+   "link_to": "Material Request",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
   },
   {
    "hidden": 0,
-   "is_query_report": 1,
-   "label": "Material Requirements Planning Report",
+   "is_query_report": 0,
+   "label": "Supplier",
    "link_count": 0,
-   "link_to": "Material Requirements Planning Report",
-   "link_type": "Report",
+   "link_to": "Supplier",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shipment",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shipment Parcel Template",
+   "link_count": 0,
+   "link_to": "Shipment Parcel Template",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shipment Profile",
+   "link_count": 0,
+   "link_to": "Shipment Profile",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shipment Plan",
+   "link_count": 0,
+   "link_to": "Shipment Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shipment",
+   "link_count": 0,
+   "link_to": "Shipment",
+   "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
   },
@@ -203,7 +233,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Production",
-   "link_count": 3,
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -241,8 +271,136 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Planning Reports",
-   "link_count": 4,
+   "label": "Plant Floor",
+   "link_count": 0,
+   "link_to": "Plant Floor",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forecast",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forecast Model",
+   "link_count": 0,
+   "link_to": "Forecast Model",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Forecast",
+   "link_count": 0,
+   "link_to": "Sales Forecast",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Sales Order Analysis",
+   "link_count": 0,
+   "link_to": "Sales Order Analysis",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Order",
+   "link_count": 0,
+   "link_to": "Sales Order",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Customer",
+   "link_count": 0,
+   "link_to": "Customer",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Planning",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reorder Level",
+   "link_count": 0,
+   "link_to": "Reorder and Putaway Rule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Material Request",
+   "link_count": 0,
+   "link_to": "Material Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Item Lead Time",
+   "link_count": 0,
+   "link_to": "Item Lead Time",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Master Production Schedule",
+   "link_count": 0,
+   "link_to": "Master Production Schedule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "MRP",
+   "link_count": 0,
+   "link_to": "Material Requirements Planning Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Key Planning Reports",
+   "link_count": 6,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -280,16 +438,36 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
-   "label": "Scheduled Job Type",
+   "is_query_report": 1,
+   "label": "Production Analytics",
    "link_count": 0,
-   "link_to": "Scheduled Job Type",
-   "link_type": "DocType",
+   "link_to": "Production Analytics",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Work Order Summary",
+   "link_count": 0,
+   "link_to": "Work Order Summary",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Job Card Summary",
+   "link_count": 0,
+   "link_to": "Job Card Summary",
+   "link_type": "Report",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2026-04-21 21:16:14.285718",
+ "modified": "2026-04-22 11:51:18.190833",
  "modified_by": "Administrator",
  "module": "Planning",
  "name": "Planning",
@@ -315,6 +493,24 @@
   {
    "color": "Orange",
    "doc_view": "List",
+   "format": "{} Pending",
+   "label": "Purchase Requests",
+   "link_to": "Material Request",
+   "stats_filter": "[[\"Material Request\",\"material_request_type\",\"=\",\"Purchase\"],[\"Material Request\",\"status\",\"=\",\"Pending\"]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Yellow",
+   "doc_view": "List",
+   "format": "{} Pending",
+   "label": "Transfer Requests",
+   "link_to": "Material Request",
+   "stats_filter": "[[\"Material Request\",\"material_request_type\",\"=\",\"Material Transfer\"],[\"Material Request\",\"status\",\"=\",\"Pending\"]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
    "format": "{} To Deliver",
    "label": "Sales Order",
    "link_to": "Sales Order",
@@ -328,6 +524,24 @@
    "label": "Forecast Runs",
    "link_to": "Prepared Report",
    "stats_filter": "[[\"Prepared Report\",\"report_name\",\"=\",\"LENS Sales Forecast Holt Winters\"],[\"Prepared Report\",\"status\",\"=\",\"Completed\"]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "format": "{} Draft",
+   "label": "Draft POs",
+   "link_to": "Purchase Order",
+   "stats_filter": "[[\"Purchase Order\",\"status\",\"=\",\"Draft\"]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "format": "{} Pending",
+   "label": "Manufacturing Requests",
+   "link_to": "Material Request",
+   "stats_filter": "[[\"Material Request\",\"material_request_type\",\"=\",\"Manufacture\"],[\"Material Request\",\"status\",\"=\",\"Pending\"]]",
    "type": "DocType"
   },
   {

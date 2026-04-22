@@ -460,6 +460,10 @@ def _sync_item_reorder(item_doc, row):
 
 
 def _sync_putaway_rule(company, row):
+	if flt(row.capacity) <= 0:
+		return False
+
+	item_doc = frappe.get_cached_doc("Item", row.item_code)
 	rule_name = frappe.db.get_value(
 		"Putaway Rule",
 		{"item_code": row.item_code, "warehouse": row.warehouse, "priority": 1},
@@ -477,5 +481,9 @@ def _sync_putaway_rule(company, row):
 	rule.priority = 1
 	rule.capacity = flt(row.capacity)
 	rule.uom = row.uom
+	rule.stock_uom = item_doc.stock_uom
+	rule.conversion_factor = _get_uom_factor(item_doc, row.uom)
+	rule.stock_capacity = flt(rule.capacity) * flt(rule.conversion_factor)
 	rule.disable = 0
 	rule.save(ignore_permissions=True)
+	return True

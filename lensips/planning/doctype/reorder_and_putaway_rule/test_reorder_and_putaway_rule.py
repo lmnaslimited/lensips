@@ -13,6 +13,7 @@ from lensips.planning.doctype.reorder_and_putaway_rule.reorder_and_putaway_rule 
 	_get_forecast_item_count,
 	_convert_qty,
 	_resolve_material_request_type,
+	_sync_putaway_rule,
 )
 
 
@@ -137,6 +138,67 @@ class TestReorderAndPutawayRule(unittest.TestCase):
 			side_effect=RuntimeError("global fallback should not be used"),
 		):
 			self.assertEqual(_convert_qty(fake_item, 10, "CTN", "Inner"), 50.0)
+
+	def test_sync_putaway_rule_sets_stock_capacity_before_save(self):
+		module_path = "lensips.planning.doctype.reorder_and_putaway_rule.reorder_and_putaway_rule"
+		fake_item = SimpleNamespace(
+			stock_uom="Inner",
+			get=lambda key: [SimpleNamespace(uom="CTN", conversion_factor=10)] if key == "uoms" else None,
+		)
+		saved = {}
+
+		class FakeRule:
+			def __init__(self):
+				self.flags = SimpleNamespace()
+
+			def save(self, ignore_permissions=True):
+				saved["capacity"] = self.capacity
+				saved["uom"] = self.uom
+				saved["stock_uom"] = self.stock_uom
+				saved["conversion_factor"] = self.conversion_factor
+				saved["stock_capacity"] = self.stock_capacity
+				saved["ignore_permissions"] = ignore_permissions
+
+		fake_frappe = SimpleNamespace(
+			db=SimpleNamespace(get_value=lambda *args, **kwargs: None),
+			get_cached_doc=lambda doctype, name: fake_item,
+			new_doc=lambda doctype: FakeRule(),
+		)
+		row = SimpleNamespace(item_code="TEST-ITEM", warehouse="WH-1", capacity=12, uom="CTN")
+
+		with patch(f"{module_path}.frappe", new=fake_frappe):
+			_sync_putaway_rule("Test Company", row)
+
+		self.assertEqual(saved["capacity"], 12.0)
+		self.assertEqual(saved["uom"], "CTN")
+		self.assertEqual(saved["stock_uom"], "Inner")
+		self.assertEqual(saved["conversion_factor"], 10.0)
+		self.assertEqual(saved["stock_capacity"], 120.0)
+		self.assertTrue(saved["ignore_permissions"])
+
+	def test_sync_putaway_rule_skips_zero_capacity_rows(self):
+		module_path = "lensips.planning.doctype.reorder_and_putaway_rule.reorder_and_putaway_rule"
+		calls = {"get_cached_doc": 0, "new_doc": 0, "get_value": 0}
+
+		def _count(name):
+			def inner(*args, **kwargs):
+				calls[name] += 1
+				raise AssertionError(f"{name} should not be called for zero capacity rows")
+
+			return inner
+
+		fake_frappe = SimpleNamespace(
+			db=SimpleNamespace(get_value=_count("get_value")),
+			get_cached_doc=_count("get_cached_doc"),
+			new_doc=_count("new_doc"),
+		)
+		row = SimpleNamespace(item_code="TEST-ITEM", warehouse="WH-1", capacity=0, uom="CTN")
+
+		with patch(f"{module_path}.frappe", new=fake_frappe):
+			self.assertFalse(_sync_putaway_rule("Test Company", row))
+		self.assertEqual(calls["get_cached_doc"], 0)
+		self.assertEqual(calls["new_doc"], 0)
+		self.assertEqual(calls["get_value"], 0)
 
 
 if __name__ == "__main__":
